@@ -10,20 +10,30 @@ import os
 import sys
 import logging
 import uuid
+import base64
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from contextlib import asynccontextmanager
 from collections import defaultdict
+import io
 
 # Disable ChromaDB telemetry to prevent PostHog errors
 os.environ['ANONYMIZED_TELEMETRY'] = 'False'
 os.environ['CHROMA_TELEMETRY'] = 'False'
 
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+
+# Import Google Generative AI for vision capabilities
+try:
+    import google.generativeai as genai
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
+    genai = None
 
 # Add project paths to system path
 current_dir = Path(__file__).parent
@@ -51,6 +61,7 @@ logger = logging.getLogger(__name__)
 # Global variables for our models
 disease_predictor: Optional[MedicalChatbotPredictor] = None
 rag_pipeline: Optional[RAGPipeline] = None
+vision_model = None  # Gemini vision model for image analysis
 
 # Initialize enhanced modules
 response_formatter = MedicalResponseFormatter()
@@ -196,7 +207,7 @@ This AI system provides educational information only and is not a substitute for
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize models on startup"""
-    global disease_predictor, rag_pipeline, server_stats
+    global disease_predictor, rag_pipeline, server_stats, vision_model
     
     logger.info("🚀 Starting Hybrid Medical Chatbot Server...")
     server_stats["startup_time"] = datetime.now().isoformat()
@@ -240,6 +251,21 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"❌ Failed to load RAG system: {e}")
         rag_pipeline = None
+    
+    # Initialize Gemini Vision Model for image analysis
+    try:
+        api_key = os.getenv("GEMINI_API_KEY")
+        if api_key and GEMINI_AVAILABLE:
+            logger.info("👁️ Loading Gemini Vision model...")
+            genai.configure(api_key=api_key)
+            vision_model = genai.GenerativeModel('gemini-2.0-flash')
+            logger.info("✅ Gemini Vision model loaded successfully")
+        else:
+            logger.warning("⚠️ Gemini Vision not available (no API key or library)")
+            vision_model = None
+    except Exception as e:
+        logger.error(f"❌ Failed to load Gemini Vision model: {e}")
+        vision_model = None
     
     logger.info("🎉 Hybrid Medical Chatbot Server ready!")
     
@@ -865,6 +891,259 @@ Thank you for your patience! 💙
             session_id=error_session_id,
             conversation_turn=1
         )
+
+
+@app.post("/chat-with-attachments", response_model=HybridResponse)
+async def chat_with_attachments(
+    message: str = Form(default=""),
+    session_id: Optional[str] = Form(default=None),
+    files: List[UploadFile] = File(default=[])
+):
+    """
+    Chat endpoint that handles image and file attachments.
+    Images are analyzed using Gemini Vision for visual symptom analysis.
+    Documents can provide additional context for medical questions.
+    """
+    global server_stats, vision_model
+    
+    server_stats["total_requests"] += 1
+    server_stats["hybrid_requests"] += 1
+    
+    try:
+        start_time = datetime.now()
+        
+        # Get or create session
+        sess_id, session = get_or_create_session(session_id)
+        conversation_turn = len(session['conversation_history']) + 1
+        
+        # Process attachments
+        image_data_list = []  # Store actual image data for vision analysis
+        image_descriptions = []
+        document_contents = []
+        attachment_info = []
+        
+        for file in files:
+            file_content = await file.read()
+            file_size = len(file_content)
+            content_type = file.content_type or ""
+            
+            attachment_info.append({
+                "name": file.filename,
+                "type": content_type,
+                "size": file_size
+            })
+            
+            if content_type.startswith("image/"):
+                # Store image data for vision analysis
+                image_data_list.append({
+                    "data": file_content,
+                    "mime_type": content_type,
+                    "filename": file.filename
+                })
+                image_descriptions.append(file.filename)
+                
+            elif content_type in ["application/pdf", "text/plain", "application/msword", 
+                                   "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]:
+                # For text-based documents, try to extract text
+                if content_type == "text/plain":
+                    try:
+                        document_contents.append(file_content.decode('utf-8')[:2000])
+                    except:
+                        document_contents.append(f"[Document: {file.filename}]")
+                else:
+                    document_contents.append(f"[Document: {file.filename}]")
+        
+        # If we have images, use Gemini Vision to analyze them
+        if image_data_list and vision_model:
+            try:
+                # Prepare the prompt for medical image analysis
+                user_question = message if message else "What is this? Can you identify this condition?"
+                
+                vision_prompt = f"""You are a medical education assistant analyzing an image shared by a user.
+
+User's question: {user_question}
+
+Please analyze this medical/health-related image and provide:
+
+1. **Visual Observations**: Describe what you observe in the image (appearance, color, pattern, location if visible)
+
+2. **Possible Conditions**: Based on the visual characteristics, list potential conditions this could represent. Be educational but careful not to diagnose.
+
+3. **Key Characteristics**: Note any distinctive features that are medically relevant
+
+4. **Recommended Actions**: Suggest appropriate next steps (e.g., see a dermatologist, primary care physician)
+
+5. **Important Considerations**: Any factors that would help a healthcare provider make a proper assessment
+
+IMPORTANT GUIDELINES:
+- Be educational and informative, but emphasize this is NOT a diagnosis
+- Encourage professional medical consultation
+- If the image is unclear or not medical in nature, say so
+- Focus on observable characteristics, not definitive diagnoses
+- Use empathetic, reassuring language"""
+
+                # Create the image parts for Gemini
+                image_parts = []
+                for img_data in image_data_list:
+                    image_parts.append({
+                        "mime_type": img_data["mime_type"],
+                        "data": base64.b64encode(img_data["data"]).decode('utf-8')
+                    })
+                
+                # Generate response with vision model
+                response_parts = [vision_prompt]
+                for img_part in image_parts:
+                    response_parts.append({
+                        "inline_data": img_part
+                    })
+                
+                vision_response = vision_model.generate_content(response_parts)
+                analysis_text = vision_response.text
+                
+                # Format the response nicely
+                response_text = f"""🔍 **Image Analysis Results**
+
+{analysis_text}
+
+---
+
+⚠️ **Important Medical Disclaimer**
+
+This analysis is for **educational purposes only** and should NOT be considered a medical diagnosis. The observations above are based on visual analysis and cannot replace:
+
+• Physical examination by a healthcare professional
+• Laboratory tests and diagnostic procedures  
+• Complete medical history evaluation
+
+**Please consult with a qualified healthcare provider** (such as a dermatologist or your primary care physician) for proper diagnosis and treatment recommendations.
+
+If you're experiencing concerning symptoms or the condition is worsening, please seek medical attention promptly."""
+
+                processing_time = (datetime.now() - start_time).total_seconds() * 1000
+                
+                # Store in conversation history
+                add_to_conversation_history(
+                    sess_id,
+                    f"{message} [+ {len(image_data_list)} image(s)]",
+                    response_text,
+                    {"has_images": True, "image_count": len(image_data_list), "vision_analysis": True}
+                )
+                
+                return HybridResponse(
+                    response=response_text,
+                    query_type="symptoms",
+                    confidence=0.7,
+                    processing_time_ms=processing_time,
+                    system_used="Gemini Vision Analysis",
+                    medical_disclaimer=MEDICAL_DISCLAIMER,
+                    session_id=sess_id,
+                    conversation_turn=conversation_turn
+                )
+                
+            except Exception as vision_error:
+                logger.error(f"Vision analysis failed: {vision_error}")
+                # Fall back to asking for description
+                response_text = f"""I received your image but encountered an issue analyzing it: {str(vision_error)}
+
+**Please describe what you're seeing:**
+• What part of the body is affected?
+• What does it look like (color, size, texture)?
+• How long have you had this?
+• Any associated symptoms (pain, itching, etc.)?
+
+With this information, I can provide more helpful guidance."""
+                
+                processing_time = (datetime.now() - start_time).total_seconds() * 1000
+                
+                return HybridResponse(
+                    response=response_text,
+                    query_type="symptoms",
+                    confidence=0.3,
+                    processing_time_ms=processing_time,
+                    system_used="Fallback - Vision Error",
+                    medical_disclaimer=MEDICAL_DISCLAIMER,
+                    session_id=sess_id,
+                    conversation_turn=conversation_turn
+                )
+        
+        # If we have images but no vision model available
+        elif image_data_list and not vision_model:
+            response_text = """I received your image, but image analysis is currently not available (Gemini Vision model not configured).
+
+**To help you, please describe:**
+• What body part is shown in the image?
+• What are you observing (color, size, shape, texture)?
+• How long have you had this condition?
+• Any symptoms like pain, itching, burning, or swelling?
+
+With a detailed description, I can provide educational information about possible conditions.
+
+*Note: For accurate visual diagnosis, please consult a healthcare professional who can examine you in person.*"""
+            
+            processing_time = (datetime.now() - start_time).total_seconds() * 1000
+            
+            return HybridResponse(
+                response=response_text,
+                query_type="symptoms",
+                confidence=0.3,
+                processing_time_ms=processing_time,
+                system_used="Image Received - Vision Unavailable",
+                medical_disclaimer=MEDICAL_DISCLAIMER,
+                session_id=sess_id,
+                conversation_turn=conversation_turn
+            )
+        
+        # Handle documents
+        if document_contents:
+            enhanced_message = message if message else "Please help me understand this document."
+            enhanced_message += f"\n\nDocument content:\n{document_contents[0][:1500]}"
+            
+            hybrid_request = HybridRequest(
+                message=enhanced_message,
+                session_id=sess_id
+            )
+            
+            response = await hybrid_chat(hybrid_request)
+            response.response += f"\n\n📄 *Analyzed {len(document_contents)} document(s)*"
+            return response
+        
+        # If no valid attachments, just process the message normally
+        if message:
+            hybrid_request = HybridRequest(
+                message=message,
+                session_id=sess_id
+            )
+            return await hybrid_chat(hybrid_request)
+        
+        # No message and no valid attachments
+        return HybridResponse(
+            response="I didn't receive any message or valid attachments. Please send your question or attach an image/document.",
+            query_type="general",
+            processing_time_ms=(datetime.now() - start_time).total_seconds() * 1000,
+            system_used="Input Validation",
+            medical_disclaimer=MEDICAL_DISCLAIMER,
+            session_id=sess_id,
+            conversation_turn=conversation_turn
+        )
+        
+    except Exception as e:
+        server_stats["errors"] += 1
+        server_stats["last_error"] = str(e)
+        logger.error(f"Error in chat with attachments: {e}")
+        logger.exception("Full exception traceback:")
+        
+        error_session_id = session_id or str(uuid.uuid4())
+        
+        return HybridResponse(
+            response=f"I apologize, but I encountered an issue processing your request. Please try again or describe your concern in text. Error: {str(e)}",
+            query_type="unknown",
+            processing_time_ms=0,
+            system_used="Error Handler",
+            medical_disclaimer=MEDICAL_DISCLAIMER,
+            session_id=error_session_id,
+            conversation_turn=1
+        )
+
 
 if __name__ == "__main__":
     uvicorn.run(

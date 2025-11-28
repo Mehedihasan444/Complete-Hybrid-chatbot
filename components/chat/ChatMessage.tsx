@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Message } from '@/types/chat';
 import { cn } from '@/lib/utils';
-import { Bot, User, Copy, Heart, ThumbsUp, MoreHorizontal, Edit2 } from 'lucide-react';
+import { Bot, User, Copy, Heart, ThumbsUp, MoreHorizontal, Edit2, FileText, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface ChatMessageProps {
@@ -73,6 +73,12 @@ export function ChatMessage({ message }: ChatMessageProps) {
     } catch (error) {
       console.error('Failed to copy text:', error);
     }
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   const formatContent = (content: string) => {
@@ -165,6 +171,43 @@ export function ChatMessage({ message }: ChatMessageProps) {
         )}>
           {formatContent(messageContent)}
         </div>
+
+        {/* Display attachments if present */}
+        {message.attachments && message.attachments.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {message.attachments.map((attachment) => (
+              <div
+                key={attachment.id}
+                className="bg-white/70 rounded-lg overflow-hidden border border-gray-200 shadow-sm"
+              >
+                {attachment.type === 'image' && attachment.preview ? (
+                  <div className="relative">
+                    <img
+                      src={attachment.preview}
+                      alt={attachment.name}
+                      className="max-w-[200px] max-h-[150px] object-cover rounded-lg"
+                    />
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs px-2 py-1 truncate">
+                      {attachment.name}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 p-2 min-w-[120px]">
+                    <FileText size={20} className="text-blue-500 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-gray-700 truncate">
+                        {attachment.name}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {formatFileSize(attachment.size)}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Message reactions */}
         {message.reactions && message.reactions.length > 0 && (

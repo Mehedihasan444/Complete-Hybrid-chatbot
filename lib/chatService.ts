@@ -228,6 +228,76 @@ export async function generateBotResponse(
 }
 
 /**
+ * Generate bot response with file/image attachments
+ */
+export async function generateBotResponseWithAttachments(
+  message: string,
+  attachments: { id: string; file: File; type: 'image' | 'document'; preview?: string; name: string; size: number }[],
+  sessionId?: string | null
+): Promise<ChatResponse> {
+  const startTime = Date.now();
+  
+  try {
+    // Check if Python server is available
+    const isServerAvailable = await pythonServerClient.testConnection();
+    
+    if (!isServerAvailable) {
+      console.warn('Python server unavailable, using fallback response');
+      return generateFallbackResponse(message || 'Analyze attached files', 'hybrid');
+    }
+
+    // Create FormData for file upload
+    const formData = new FormData();
+    formData.append('message', message || '');
+    if (sessionId) {
+      formData.append('session_id', sessionId);
+    }
+    
+    // Add files to FormData
+    for (const attachment of attachments) {
+      formData.append('files', attachment.file, attachment.name);
+    }
+
+    // Send to backend with files
+    const response = await fetch('http://localhost:8000/chat-with-attachments', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Server error: ${response.status}`);
+    }
+
+    const result = await response.json();
+    
+    const totalProcessingTime = Date.now() - startTime;
+
+    return {
+      response: result.response,
+      queryType: result.query_type as 'symptoms' | 'general' | 'hybrid',
+      confidence: result.confidence,
+      predictedCondition: result.predicted_condition,
+      sources: result.sources,
+      processingTime: totalProcessingTime,
+      systemUsed: result.system_used,
+      medicalDisclaimer: result.medical_disclaimer,
+      timestamp: new Date().toISOString(),
+      session_id: result.session_id,
+      conversation_turn: result.conversation_turn
+    };
+
+  } catch (error) {
+    console.error('Error generating bot response with attachments:', error);
+    
+    // Provide helpful error response
+    const errorResponse = generateFallbackResponse(message || 'Analyze files', 'hybrid');
+    errorResponse.response = `I apologize, but I couldn't process your attachments. ${errorResponse.response}`;
+    
+    return errorResponse;
+  }
+}
+
+/**
  * Get model information for display in UI
  */
 export async function getModelInfo() {

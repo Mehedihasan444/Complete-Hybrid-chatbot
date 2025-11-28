@@ -5,8 +5,8 @@ import { useState, useEffect, useRef } from 'react';
 import { ChatMessage } from '@/components/chat/ChatMessage';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { TypingIndicator } from '@/components/chat/TypingIndicator';
-import { generateBotResponse } from '@/lib/chatService';
-import { Message } from '@/types/chat';
+import { generateBotResponse, generateBotResponseWithAttachments } from '@/lib/chatService';
+import { Message, Attachment } from '@/types/chat';
 import { MessageCircle, Sparkles, Users, Settings, Moon, Sun, Volume2, VolumeX, Stethoscope } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MedicalInfoPanel } from '@/components/MedicalInfoPanel';
@@ -42,12 +42,16 @@ export default function ChatPage() {
     setMessages([welcomeMessage]);
   }, []);
 
-  const handleSendMessage = async (content: string) => {
+  const handleSendMessage = async (content: string, attachments?: Attachment[]) => {
+    // Create user message with attachments info
     const userMessage: Message = {
       id: Date.now().toString(),
-      content,
+      content: attachments && attachments.length > 0 
+        ? content || `[Sent ${attachments.length} attachment${attachments.length > 1 ? 's' : ''}]`
+        : content,
       sender: 'user',
-      timestamp: new Date()
+      timestamp: new Date(),
+      attachments: attachments,
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -59,7 +63,14 @@ export default function ChatPage() {
       console.log('🔊 Message sent sound');
     }
     try {
-      const botResponse = await generateBotResponse(content, sessionId);
+      let botResponse;
+      
+      // Use attachment-aware function if we have attachments
+      if (attachments && attachments.length > 0) {
+        botResponse = await generateBotResponseWithAttachments(content, attachments, sessionId);
+      } else {
+        botResponse = await generateBotResponse(content, sessionId);
+      }
       
       // Extract session_id from response if available
       if (botResponse.session_id && !sessionId) {
