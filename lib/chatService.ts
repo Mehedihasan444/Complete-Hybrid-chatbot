@@ -189,21 +189,16 @@ export async function generateBotResponse(
           formattedResponse += `• Processing Time: ${processingTimeMs.toFixed(1)}ms`;
         }
       }
-    } else if (result.system_used?.includes('RAG') && result.sources?.length) {
-      // Add source information for RAG responses
-      formattedResponse += `\n\n**Sources:** ${result.sources.slice(0, 3).join(', ')}`;
+    } else if (result.system_used?.includes('RAG')) {
+      // Add processing time for RAG responses (sources already in response)
       if (processingTimeMs !== undefined) {
         formattedResponse += `\n*Processing time: ${processingTimeMs.toFixed(1)}ms*`;
       }
     }
 
-    // Add medical disclaimer if not already present
-    if (result.medical_disclaimer) {
-      const disclaimer = result.medical_disclaimer.trim();
-      if (disclaimer && !responseHasDisclaimer(formattedResponse)) {
-        formattedResponse += `\n\n${disclaimer}`;
-      }
-    }
+    // Only add medical disclaimer if not already present in the response
+    // The backend now includes it in the formatted response
+    // This check prevents duplicate disclaimers
 
     const totalProcessingTime = Date.now() - startTime;
 

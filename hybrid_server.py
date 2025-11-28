@@ -37,6 +37,11 @@ sys.path.append(str(rag_dir))
 from src.medical_chatbot_predictor import MedicalChatbotPredictor
 from src.rag_pipeline import RAGPipeline
 
+# Import enhanced modules for human-friendly responses
+from response_formatter import MedicalResponseFormatter, PatientContext
+from symptom_extractor import SymptomExtractor, analyze_symptoms
+from conversation_manager import ConversationManager, get_conversation_manager
+
 # Configure logging to suppress ChromaDB telemetry errors
 logging.basicConfig(level=logging.INFO)
 logging.getLogger('chromadb.telemetry.product.posthog').setLevel(logging.CRITICAL)
@@ -46,6 +51,12 @@ logger = logging.getLogger(__name__)
 # Global variables for our models
 disease_predictor: Optional[MedicalChatbotPredictor] = None
 rag_pipeline: Optional[RAGPipeline] = None
+
+# Initialize enhanced modules
+response_formatter = MedicalResponseFormatter()
+symptom_extractor = SymptomExtractor()
+conversation_mgr = get_conversation_manager()
+
 server_stats = {
     "startup_time": None,
     "total_requests": 0,
@@ -534,15 +545,45 @@ async def hybrid_chat(request: HybridRequest):
     try:
         start_time = datetime.now()
         
-        # Get or create session
+        # Get or create session using enhanced conversation manager
         session_id, session = get_or_create_session(request.session_id)
         conversation_turn = len(session['conversation_history']) + 1
+        
+        # Also update enhanced conversation manager
+        conv_session = conversation_mgr.get_or_create_session(session_id)
+        is_first_interaction = conv_session.total_messages == 0
         
         # Get conversation context
         conversation_context = get_conversation_context(session_id, max_turns=5)
         
-        # Determine query type
+        # Perform advanced symptom extraction
+        symptom_analysis = symptom_extractor.extract_symptoms(request.message)
+        
+        # Determine query type (use extracted symptoms to help)
         query_type = request.query_type or detect_query_type(request.message)
+        
+        # Check for urgent red flags first
+        if symptom_analysis.red_flags_detected:
+            urgency = symptom_analysis.urgency_level
+            if urgency == "emergency":
+                emergency_response = response_formatter.check_red_flags(request.message)
+                if emergency_response:
+                    urgent_text = "⚠️ **IMPORTANT SAFETY ALERT**\n\n"
+                    urgent_text += "\n\n".join(emergency_response)
+                    urgent_text += "\n\n**Please seek immediate medical attention.** If you're experiencing a medical emergency, call emergency services (911) or go to the nearest emergency room immediately.\n\n"
+                    urgent_text += "*Your safety is the top priority. Don't delay seeking help.*"
+                    
+                    return HybridResponse(
+                        response=urgent_text,
+                        query_type="symptoms",
+                        confidence=1.0,
+                        predicted_condition="Requires Immediate Medical Attention",
+                        processing_time_ms=(datetime.now() - start_time).total_seconds() * 1000,
+                        system_used="Emergency Detection System",
+                        medical_disclaimer=MEDICAL_DISCLAIMER,
+                        session_id=session_id,
+                        conversation_turn=conversation_turn
+                    )
         
         if query_type == 'symptoms' and disease_predictor:
             # Route to symptom prediction
@@ -550,12 +591,40 @@ async def hybrid_chat(request: HybridRequest):
             symptom_response = await predict_symptoms(symptom_request)
 
             confidence_value = symptom_response.confidence or 0.0
-            if confidence_value >= 0.7:
-                confidence_label = "high confidence"
-            elif confidence_value >= 0.4:
-                confidence_label = "moderate confidence"
-            else:
-                confidence_label = "low confidence"
+            consensus_ratio = symptom_response.consensus_ratio or 1.0
+            
+            # Check if we need clarifying questions
+            if symptom_analysis.needs_clarification and confidence_value < 0.6:
+                # Ask for more details instead of giving uncertain prediction
+                clarification_response = "I'd like to help you better understand what you're experiencing. To provide more useful guidance, could you share a few more details?\n\n"
+                clarification_response += "**Please tell me:**\n"
+                
+                # Use only ONE source of questions to avoid any duplication
+                # Prefer formatter questions as they're more context-aware
+                formatter_questions = response_formatter.get_follow_up_questions(request.message, PatientContext())
+                
+                # Add max 2 questions (keep it simple)
+                for q in formatter_questions[:2]:
+                    clarification_response += f"• {q}\n"
+                
+                clarification_response += "\nThe more details you can share, the better I can help point you in the right direction."
+                
+                # Update conversation manager
+                conversation_mgr.update_session(
+                    session_id, request.message, clarification_response,
+                    {"intent": "needs_clarification", "symptoms": [s.name for s in symptom_analysis.symptoms]}
+                )
+                
+                return HybridResponse(
+                    response=clarification_response,
+                    query_type="symptoms",
+                    confidence=confidence_value,
+                    processing_time_ms=(datetime.now() - start_time).total_seconds() * 1000,
+                    system_used="Symptom Clarification System",
+                    medical_disclaimer=MEDICAL_DISCLAIMER,
+                    session_id=session_id,
+                    conversation_turn=conversation_turn
+                )
 
             red_flags = extract_red_flag_symptoms(request.message)
             needs_additional_context = (
@@ -564,20 +633,28 @@ async def hybrid_chat(request: HybridRequest):
             )
 
             rag_reference: Optional[RAGResponse] = None
+            rag_context_text: Optional[str] = None
             if needs_additional_context:
                 try:
+                    predicted_condition = symptom_response.predicted_condition or ""
                     rag_followup_question = (
-                        "Patient symptoms: "
-                        f"{request.message}. Provide possible medical causes and typical evaluation/treatment approaches "
-                        "based on The Gale Encyclopedia of Medicine."
+                        f"What is {predicted_condition}? Provide information about symptoms, causes, "
+                        "and when to see a doctor."
                     )
                     rag_reference = await ask_medical_question(
                         RAGRequest(question=rag_followup_question)
                     )
+                    if rag_reference and rag_reference.answer:
+                        # Clean up RAG context for integration
+                        rag_context_text = rag_reference.answer.strip()
+                        # Remove duplicate disclaimers that will be added later
+                        if "Important Notice" in rag_context_text:
+                            rag_context_text = rag_context_text.split("**Important Notice")[0].strip()
                 except Exception as rag_error:
                     logger.warning(f"Unable to fetch supplemental RAG information: {rag_error}")
                     rag_reference = None
 
+            # Prepare top predictions for formatter
             sorted_predictions = sorted(
                 symptom_response.top_predictions,
                 key=lambda p: p.get('probability_percentage', 0.0),
@@ -594,80 +671,34 @@ async def hybrid_chat(request: HybridRequest):
                 seen_conditions.add(normalized)
                 unique_predictions.append(pred)
 
-            response_sections: List[str] = []
-            response_sections.append("Thanks for sharing how you're feeling. Here's what the symptom checker found:\n")
-
+            # Use the new human-friendly response formatter
             primary_condition = symptom_response.predicted_condition or "Not clearly identified"
-            response_sections.append(
-                f"🩺 **Primary pattern detected**: {primary_condition}"
+            
+            # Create patient context for personalized response
+            patient_ctx = PatientContext(
+                mentioned_symptoms=[s.name for s in symptom_analysis.symptoms],
+                conversation_stage="providing_results" if conversation_turn > 1 else "initial"
             )
-            response_sections.append(
-                f"📊 **Model confidence**: {confidence_value:.1%} ({confidence_label})"
+            
+            # Format the response using our enhanced formatter
+            combined_text = response_formatter.format_symptom_response(
+                symptoms_text=request.message,
+                predicted_condition=primary_condition,
+                confidence=confidence_value,
+                consensus_ratio=consensus_ratio,
+                top_predictions=unique_predictions,
+                recommendations=symptom_response.recommendations or [],
+                rag_context=rag_context_text,
+                patient_context=patient_ctx,
+                is_first_interaction=is_first_interaction
             )
-
-            if symptom_response.consensus_ratio is not None and symptom_response.total_models:
-                response_sections.append(
-                    f"🤝 **Model agreement**: {symptom_response.agreeing_models or 0}/"
-                    f"{symptom_response.total_models} models aligned "
-                    f"({(symptom_response.consensus_ratio or 0.0) * 100:.0f}% consensus)"
-                )
-
-            if unique_predictions:
-                alt_lines = []
-                for pred in unique_predictions[:3]:
-                    label = pred.get('condition', 'Unknown')
-                    probability = pred.get('probability_percentage', 0.0)
-                    alt_lines.append(f"• {label} ({probability:.1f}% estimated likelihood)")
-                response_sections.append("\n🤔 **Other possibilities the models considered:**\n" + "\n".join(alt_lines))
-
-            if symptom_response.recommendations:
-                recommendation_lines = "\n".join(f"• {rec}" for rec in symptom_response.recommendations)
-                response_sections.append("\n💡 **What this means for you:**\n" + recommendation_lines)
-
-            if confidence_value < 0.4:
-                response_sections.append(
-                    "\n⚠️ **Model uncertainty:** The AI could not find a clear match for your symptoms. Please prioritize an in-person medical evaluation."
-                )
-
-            if red_flags:
-                flagged = ", ".join(red_flags)
-                response_sections.append(
-                    "\n🚨 **Urgent attention recommended:** Because you mentioned "
-                    f"{flagged}, please seek in-person medical care or emergency services immediately."
-                )
-
-            response_sections.append("\n🏥 **Next steps:**")
-            if red_flags:
-                response_sections.append("• Contact emergency services or go to the nearest emergency department right away")
-                response_sections.append("• Do not ignore chest pain, trouble breathing, or sudden neurological changes")
-            elif confidence_value >= 0.6:
-                response_sections.append("• Schedule a prompt appointment with your healthcare provider")
-                response_sections.append("• Track any changes in your symptoms while you wait for care")
-            else:
-                response_sections.append("• Arrange an evaluation with a healthcare professional as soon as possible")
-                response_sections.append("• Keep a log of symptom timing, triggers, and severity to share with your clinician")
-
-            if rag_reference and rag_reference.answer:
-                response_sections.append("\n📚 **What medical references suggest:**\n" + rag_reference.answer.strip())
-
-            disclaimer_text = (
-                "⚠️ **Important medical disclaimer:** This AI support tool is for educational guidance only "
-                "and must not replace professional medical evaluation. Always consult qualified healthcare "
-                "providers, and seek urgent care for emergency symptoms."
-            )
-
-            # Avoid duplicating disclaimer if already present in supplemental content
-            combined_text = "\n\n".join(response_sections)
-            lower_combined = combined_text.lower()
-            if "important medical disclaimer" not in lower_combined and "important notice" not in lower_combined:
-                combined_text += "\n\n" + disclaimer_text
 
             supplemental_sources = rag_reference.sources if rag_reference else None
             system_used = "AI Disease Prediction System"
             if rag_reference:
                 system_used = "AI Disease Prediction System + Medical Knowledge Base"
 
-            # Save to conversation history
+            # Save to conversation history (both old and new systems)
             add_to_conversation_history(
                 session_id,
                 request.message,
@@ -678,6 +709,16 @@ async def hybrid_chat(request: HybridRequest):
                     'predicted_condition': primary_condition,
                     'red_flags': red_flags,
                     'rag_context_added': bool(rag_reference)
+                }
+            )
+            
+            # Update enhanced conversation manager
+            conversation_mgr.update_session(
+                session_id, request.message, combined_text,
+                {
+                    "predicted_condition": primary_condition,
+                    "confidence": confidence_value,
+                    "symptoms": [s.name for s in symptom_analysis.symptoms]
                 }
             )
 
@@ -730,37 +771,13 @@ async def hybrid_chat(request: HybridRequest):
             rag_request = RAGRequest(question=enhanced_question)
             rag_response = await ask_medical_question(rag_request)
             
-            # Make RAG responses more conversational and structured
-            response_text = "I'd be happy to help with your medical question! 🩺\n\n"
-            
-            # Clean up the RAG response if it has redundant information
-            clean_response = rag_response.answer.strip()
-            
-            # Add structure to responses while preserving full medical content
-            lower_response = clean_response.lower() if clean_response else ""
-
-            if clean_response:
-                paragraphs = [p.strip() for p in clean_response.split('\n\n') if p.strip()]
-                if paragraphs:
-                    response_text += "📖 **Detailed Information:**\n"
-                    for para in paragraphs:
-                        response_text += f"{para}\n\n"
-                else:
-                    response_text += f"📖 **Detailed Information:** {clean_response}\n\n"
-            else:
-                response_text += (
-                    "📖 **Information**: I couldn't retrieve specific encyclopedia details for this question, "
-                    "but I'm here to help with follow-up questions.\n\n"
-                )
-
-            # Add helpful footer without duplicating safety language already present in the model output
-            response_text += "💡 **Need more specific information?** Feel free to ask follow-up questions!\n\n"
-
-            if "important notice" not in lower_response and "medical disclaimer" not in lower_response:
-                response_text += (
-                    "⚠️ **Medical Disclaimer**: This information is for educational purposes only. "
-                    "Always consult with qualified healthcare professionals for medical advice, diagnosis, or treatment."
-                )
+            # Use the new human-friendly formatter for general medical responses
+            response_text = response_formatter.format_general_medical_response(
+                question=request.message,
+                answer=rag_response.answer or "I couldn't find specific information about that topic.",
+                sources=rag_response.sources,
+                confidence=rag_response.confidence or 0.0
+            )
             
             # Save to conversation history
             add_to_conversation_history(
@@ -768,6 +785,12 @@ async def hybrid_chat(request: HybridRequest):
                 request.message,
                 response_text,
                 {'query_type': 'general', 'confidence': rag_response.confidence}
+            )
+            
+            # Update enhanced conversation manager
+            conversation_mgr.update_session(
+                session_id, request.message, response_text,
+                {"intent": "question", "topic": request.message[:50]}
             )
             
             server_stats["last_error"] = None
