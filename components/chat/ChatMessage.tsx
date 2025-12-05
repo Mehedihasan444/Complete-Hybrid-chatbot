@@ -1,19 +1,24 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Message } from '@/types/chat';
 import { cn } from '@/lib/utils';
-import { Bot, User, Copy, Heart, ThumbsUp, MoreHorizontal, Edit2, FileText, Image as ImageIcon } from 'lucide-react';
+import { Bot, User, Copy, Heart, ThumbsUp, MoreHorizontal, Edit2, FileText, Image as ImageIcon, Share2, Flag, Download, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ResponseDisplay } from './ResponseDisplay';
+import { toast } from 'sonner';
 
 interface ChatMessageProps {
   message: Message;
+  onDelete?: (messageId: string) => void;
 }
 
-export function ChatMessage({ message }: ChatMessageProps) {
+export function ChatMessage({ message, onDelete }: ChatMessageProps) {
   const [showActions, setShowActions] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [copied, setCopied] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
 
   // Safety check for message object
   if (!message || typeof message !== 'object') {
@@ -79,6 +84,91 @@ export function ChatMessage({ message }: ChatMessageProps) {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) {
+        setShowMoreMenu(false);
+      }
+    };
+
+    if (showMoreMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showMoreMenu]);
+
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: 'Medical Chatbot Response',
+        text: messageContent,
+      }).catch(() => {
+        // Fallback: copy to clipboard
+        navigator.clipboard.writeText(messageContent);
+        toast.success('Response copied to clipboard!');
+      });
+    } else {
+      // Fallback for browsers that don't support Web Share API
+      navigator.clipboard.writeText(messageContent);
+      toast.success('Response copied to clipboard!');
+    }
+    setShowMoreMenu(false);
+  };
+
+  const handleReport = () => {
+    const issue = prompt('Please describe the issue with this response:');
+    if (issue) {
+      console.log('Issue reported:', issue);
+      toast.success('Thank you for your feedback. We will review this response.');
+      setShowMoreMenu(false);
+    }
+  };
+
+  const handleDownload = () => {
+    const element = document.createElement('a');
+    const file = new Blob([messageContent], { type: 'text/plain' });
+    element.href = URL.createObjectURL(file);
+    element.download = `chat-response-${new Date().getTime()}.txt`;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+    setShowMoreMenu(false);
+  };
+
+  const handleDelete = () => {
+
+    toast(() => (
+      <div className="flex flex-col gap-3">
+      <p className="font-semibold">Delete this message?</p>
+      <p className="text-sm text-gray-600">This action cannot be undone.</p>
+      <div className="flex gap-2">
+        <button
+        onClick={() => {
+          toast.dismiss();
+          if (onDelete) {
+          onDelete(message.id);
+          }
+          setShowMoreMenu(false);
+          toast.success('Message deleted');
+        }}
+        className="px-3 py-2 bg-red-500 text-white rounded-md text-sm font-medium hover:bg-red-600 transition"
+        >
+        Delete
+        </button>
+        <button
+        onClick={() => toast.dismiss()}
+        className="px-3 py-2 bg-gray-200 text-gray-800 rounded-md text-sm font-medium hover:bg-gray-300 transition"
+        >
+        Cancel
+        </button>
+      </div>
+      </div>
+    ), {
+      duration: 10000,
+    });
   };
 
   const formatContent = (content: string) => {
@@ -169,7 +259,19 @@ export function ChatMessage({ message }: ChatMessageProps) {
           "text-gray-800 leading-relaxed text-[15px]",
           isBot ? "text-blue-900" : "text-emerald-900"
         )}>
-          {formatContent(messageContent)}
+          {/* Use enhanced response display for bot messages */}
+          {isBot && typeof message.content === 'object' && message.content && (message.content as any).response ? (
+            <ResponseDisplay
+              response={(message.content as any).response}
+              queryType={(message.content as any).queryType}
+              confidence={(message.content as any).confidence}
+              condition={(message.content as any).predictedCondition}
+              sources={(message.content as any).sources}
+              processingTime={(message.content as any).processingTime}
+            />
+          ) : (
+            formatContent(messageContent)
+          )}
         </div>
 
         {/* Display attachments if present */}
@@ -252,14 +354,53 @@ export function ChatMessage({ message }: ChatMessageProps) {
               <Edit2 size={14} className="text-gray-600" />
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 w-7 p-0 hover:bg-gray-100"
-            title="More options"
-          >
-            <MoreHorizontal size={14} className="text-gray-600" />
-          </Button>
+          <div className="relative" ref={moreMenuRef}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowMoreMenu(!showMoreMenu)}
+              className="h-7 w-7 p-0 hover:bg-gray-100"
+              title="More options"
+            >
+              <MoreHorizontal size={14} className="text-gray-600" />
+            </Button>
+            
+            {/* Dropdown menu */}
+            {showMoreMenu && (
+              <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-50 py-1">
+                <button
+                  onClick={handleShare}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-900 transition-colors"
+                >
+                  <Share2 size={16} />
+                  <span>Share Response</span>
+                </button>
+                <button
+                  onClick={handleDownload}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-900 transition-colors"
+                >
+                  <Download size={16} />
+                  <span>Download as Text</span>
+                </button>
+                <div className="border-t border-gray-200 my-1" />
+                <button
+                  onClick={handleReport}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-900 transition-colors"
+                >
+                  <Flag size={16} />
+                  <span>Report Issue</span>
+                </button>
+                <div className="border-t border-gray-200 my-1" />
+                <button
+                  onClick={handleDelete}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-700 hover:bg-red-50 transition-colors"
+                >
+                  <Trash2 size={16} />
+                  <span>Delete Message</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

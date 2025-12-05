@@ -1,0 +1,353 @@
+{
+  "query_detection": {
+    "greetings": [
+      "hello",
+      "hi",
+      "hey",
+      "good morning",
+      "good afternoon",
+      "good evening",
+      "howdy",
+      "greetings",
+      "hi there",
+      "hello there"
+    ],
+    "off_topic_keywords": [
+      "weather",
+      "time",
+      "date",
+      "news",
+      "sports",
+      "movie",
+      "music",
+      "game",
+      "recipe",
+      "travel",
+      "shopping"
+    ],
+    "prevention_patterns": [
+      "how can i prevent",
+      "how to prevent",
+      "prevention of",
+      "avoid getting",
+      "reduce risk",
+      "how to avoid",
+      "prevent getting",
+      "stay healthy",
+      "how to protect",
+      "what should i eat",
+      "diet for",
+      "exercise for",
+      "lifestyle",
+      "tips for"
+    ],
+    "symptom_keywords": [
+      "pain",
+      "hurt",
+      "ache",
+      "fever",
+      "cough",
+      "headache",
+      "nausea",
+      "vomit",
+      "dizzy",
+      "tired",
+      "fatigue",
+      "rash",
+      "itch",
+      "swollen",
+      "bleeding",
+      "difficulty breathing",
+      "chest pain",
+      "abdominal pain",
+      "back pain",
+      "joint pain",
+      "muscle pain",
+      "sore throat",
+      "runny nose",
+      "congestion",
+      "diarrhea",
+      "constipation",
+      "weight loss",
+      "weight gain",
+      "trouble sleeping",
+      "patches",
+      "scaly",
+      "thirst",
+      "urination",
+      "blurred vision",
+      "numbness",
+      "tingling",
+      "burning",
+      "stiffness",
+      "cramps",
+      "weakness"
+    ],
+    "symptom_patterns": [
+      "i have",
+      "i am having",
+      "i feel",
+      "i am feeling",
+      "i'm experiencing",
+      "experiencing",
+      "suffering from",
+      "i've been",
+      "i have been",
+      "started having",
+      "been having",
+      "noticed",
+      "developed"
+    ],
+    "general_question_patterns": [
+      "what is",
+      "what are",
+      "how does",
+      "what causes",
+      "treatment for",
+      "how is .* treated",
+      "prevention",
+      "risk factors",
+      "complications",
+      "prognosis",
+      "medication",
+      "therapy",
+      "side effects",
+      "symptoms of",
+      "difference between",
+      "how to treat",
+      "what are the symptoms",
+      "can you explain"
+    ]
+  },
+  "thresholds": {
+    "high_confidence": 0.85,
+    "moderate_confidence": 0.65,
+    "low_confidence": 0.45,
+    "clarification_threshold": 0.2,
+    "min_words_for_prediction": 5,
+    "min_symptoms_for_prediction": 2,
+    "consensus_high": 0.9,
+    "consensus_moderate": 0.7
+  },
+  "red_flags": {
+    "chest pain": {
+      "patterns": [
+        "chest pain",
+        "tightness in chest",
+        "pressure in chest",
+        "pain in my chest"
+      ],
+      "urgency": "emergency",
+      "message": "⚠️ Chest pain can be serious. If severe or accompanied by shortness of breath, sweating, or pain radiating to your arm or jaw, please seek emergency care immediately."
+    },
+    "breathing_difficulty": {
+      "patterns": [
+        "difficulty breathing",
+        "can't breathe",
+        "struggling to breathe",
+        "shortness of breath"
+      ],
+      "urgency": "emergency",
+      "message": "⚠️ Breathing difficulties require prompt attention. If you're struggling to breathe, please call emergency services."
+    },
+    "stroke_signs": {
+      "patterns": [
+        "weakness on one side",
+        "numbness on one side",
+        "facial droop",
+        "slurred speech",
+        "sudden confusion"
+      ],
+      "urgency": "emergency",
+      "message": "⚠️ These could be signs of a stroke. Remember F.A.S.T: Face drooping, Arm weakness, Speech difficulty, Time to call emergency services!"
+    },
+    "severe_headache": {
+      "patterns": [
+        "worst headache",
+        "sudden severe headache",
+        "thunderclap headache"
+      ],
+      "urgency": "urgent",
+      "message": "⚠️ A sudden, severe headache could indicate a serious condition. Please seek medical attention promptly."
+    },
+    "high_fever": {
+      "patterns": [
+        "high fever",
+        "fever over 103",
+        "fever 104",
+        "very high fever"
+      ],
+      "urgency": "urgent",
+      "message": "⚠️ High fever may require medical attention, especially if accompanied by other symptoms."
+    },
+    "bleeding": {
+      "patterns": [
+        "vomiting blood",
+        "coughing blood",
+        "blood in stool",
+        "severe bleeding"
+      ],
+      "urgency": "emergency",
+      "message": "⚠️ Bleeding symptoms require immediate medical evaluation. Please seek emergency care."
+    },
+    "vision_loss": {
+      "patterns": [
+        "sudden vision loss",
+        "can't see",
+        "sudden blindness",
+        "vision suddenly"
+      ],
+      "urgency": "emergency",
+      "message": "⚠️ Sudden vision changes require immediate medical attention."
+    },
+    "suicidal": {
+      "patterns": [
+        "want to die",
+        "suicidal",
+        "end my life",
+        "hurt myself",
+        "self harm"
+      ],
+      "urgency": "crisis",
+      "message": "⚠️ If you're having thoughts of self-harm, please reach out for help immediately. National Suicide Prevention Lifeline: 988 (US). You're not alone."
+    }
+  },
+  "follow_up_questions": {
+    "pain": [
+      "How long have you been experiencing this pain?",
+      "Does anything make it better or worse (like rest, movement, or certain positions)?"
+    ],
+    "skin": [
+      "When did you first notice these skin changes?",
+      "Has the affected area been spreading or changing in appearance?"
+    ],
+    "digestive": [
+      "How long have these symptoms been present?",
+      "Have you noticed any connection to specific foods or times of day?"
+    ],
+    "respiratory": [
+      "How long have you had these breathing symptoms?",
+      "Do you have any known allergies, asthma, or recent respiratory infections?"
+    ],
+    "general": [
+      "How long have you been experiencing these symptoms?",
+      "Have you noticed any patterns or triggers?"
+    ],
+    "neurological": [
+      "When did these symptoms start?",
+      "Have you had any recent head injuries or changes in medication?"
+    ],
+    "cardiovascular": [
+      "How long have you been experiencing these symptoms?",
+      "Do you have any history of heart conditions or high blood pressure?"
+    ]
+  },
+  "disease_info": {
+    "Psoriasis": {
+      "brief": "a chronic autoimmune condition that affects the skin",
+      "what_to_expect": "It typically causes red, scaly patches that may itch or feel sore.",
+      "specialist": "dermatologist",
+      "lifestyle_tips": [
+        "Keeping skin moisturized can help manage symptoms",
+        "Stress management may help reduce flare-ups",
+        "Avoiding skin injuries can prevent new patches from forming"
+      ]
+    },
+    "Diabetes": {
+      "brief": "a metabolic condition affecting how your body processes blood sugar",
+      "what_to_expect": "Symptoms may include increased thirst, frequent urination, and fatigue.",
+      "specialist": "endocrinologist or primary care physician",
+      "lifestyle_tips": [
+        "Regular blood sugar monitoring is important",
+        "A balanced diet can help manage blood sugar levels",
+        "Regular physical activity is beneficial"
+      ]
+    },
+    "Hypertension": {
+      "brief": "high blood pressure, which often has no obvious symptoms",
+      "what_to_expect": "It's often called a 'silent' condition because you may not feel symptoms.",
+      "specialist": "cardiologist or primary care physician",
+      "lifestyle_tips": [
+        "Reducing sodium intake may help lower blood pressure",
+        "Regular exercise is beneficial for heart health",
+        "Stress management techniques can be helpful"
+      ]
+    },
+    "Migraine": {
+      "brief": "a neurological condition causing severe, recurring headaches",
+      "what_to_expect": "Episodes often include throbbing pain, sensitivity to light and sound, and sometimes nausea.",
+      "specialist": "neurologist",
+      "lifestyle_tips": [
+        "Identifying and avoiding triggers can help prevent attacks",
+        "Maintaining regular sleep patterns is beneficial",
+        "Staying hydrated and managing stress may help"
+      ]
+    },
+    "Common Cold": {
+      "brief": "a viral infection of the upper respiratory tract",
+      "what_to_expect": "Symptoms usually include runny nose, sore throat, cough, and mild fever.",
+      "specialist": "primary care physician (usually self-limiting)",
+      "lifestyle_tips": [
+        "Rest and hydration are key to recovery",
+        "Over-the-counter medications can help manage symptoms",
+        "Most colds resolve within 7-10 days"
+      ]
+    },
+    "Arthritis": {
+      "brief": "inflammation of one or more joints causing pain and stiffness",
+      "what_to_expect": "Symptoms typically include joint pain, swelling, and reduced range of motion.",
+      "specialist": "rheumatologist",
+      "lifestyle_tips": [
+        "Regular gentle exercise can help maintain joint flexibility",
+        "Hot or cold therapy may provide relief",
+        "Maintaining a healthy weight reduces stress on joints"
+      ]
+    }
+  },
+  "response_templates": {
+    "greeting": "Hello! 👋 Welcome to the Medical AI Assistant!\n\nI'm here to help you with:\n• 🩺 **Symptom Analysis** - Describe your symptoms and I'll help identify possible conditions\n• 📚 **Medical Information** - Ask about diseases, treatments, medications, and prevention\n• 🖼️ **Image Analysis** - Share images of skin conditions for visual analysis\n\n**How can I help you today?**\n\n*Remember: I provide educational information only. For medical emergencies, please call emergency services.*",
+    "off_topic": "I'm a medical AI assistant, so I'm best suited to help with health-related questions! 🏥\n\n**I can help you with:**\n• Symptom analysis and possible conditions\n• Information about diseases and treatments\n• Medication information and side effects\n• Prevention and lifestyle advice\n• Analyzing images of skin conditions\n\n**What health topic can I help you with today?**",
+    "clarification_intro": "I'd like to help you better understand what you're experiencing. To provide more useful guidance, could you share a few more details?",
+    "clarification_outro": "The more details you can share, the better I can help point you in the right direction.",
+    "emergency_intro": "⚠️ **IMPORTANT SAFETY ALERT**",
+    "emergency_outro": "**Please seek immediate medical attention.** If you're experiencing a medical emergency, call emergency services (911) or go to the nearest emergency room immediately.\n\n*Your safety is the top priority. Don't delay seeking help.*",
+    "diagnosis_refusal": "I understand you'd like a diagnosis, but I'm not able to provide medical diagnoses. Here's why:\n\n• Accurate diagnosis requires physical examination\n• Lab tests and imaging may be needed\n• Your complete medical history matters\n• Only licensed healthcare providers can diagnose\n\n**What I CAN do:**\n• Analyze your symptoms and suggest possible conditions\n• Provide educational information about health topics\n• Help you prepare questions for your doctor\n\nWould you like to describe your symptoms so I can provide some helpful information?",
+    "medical_disclaimer": "\n⚠️ IMPORTANT MEDICAL DISCLAIMER:\nThis AI system provides educational information only and is not a substitute for professional medical advice, diagnosis, or treatment. Always seek the advice of qualified healthcare providers with questions about medical conditions. In case of emergency, contact emergency services immediately.\n"
+  },
+  "empathetic_phrases": {
+    "openings": [
+      "I understand you're concerned about your health, and I'm here to help.",
+      "Thank you for sharing your symptoms with me. Let me help you understand what might be happening.",
+      "I can see you're experiencing some discomfort. Let's work through this together.",
+      "I appreciate you reaching out about your health concerns.",
+      "It's important that you're paying attention to how you feel. Let me provide some guidance."
+    ],
+    "acknowledgments": [
+      "I understand that must be concerning.",
+      "That sounds uncomfortable, and I'm glad you're seeking information.",
+      "I can imagine that's worrying you.",
+      "Thank you for providing those details."
+    ],
+    "encouragements": [
+      "You're doing the right thing by paying attention to your health.",
+      "It's great that you're being proactive about this.",
+      "Taking note of your symptoms is an important first step."
+    ]
+  },
+  "image_analysis": {
+    "enabled": true,
+    "max_file_size_mb": 10,
+    "supported_formats": [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp"
+    ],
+    "vision_prompt_template": "You are a medical education assistant analyzing an image shared by a user.\n\nUser's question: {question}\n\nPlease analyze this medical/health-related image and provide:\n\n1. **Visual Observations**: Describe what you observe in the image (appearance, color, pattern, location if visible)\n\n2. **Possible Conditions**: Based on the visual characteristics, list potential conditions this could represent. Be educational but careful not to diagnose.\n\n3. **Key Characteristics**: Note any distinctive features that are medically relevant\n\n4. **Recommended Actions**: Suggest appropriate next steps (e.g., see a dermatologist, primary care physician)\n\n5. **Important Considerations**: Any factors that would help a healthcare provider make a proper assessment\n\nIMPORTANT GUIDELINES:\n- Be educational and informative, but emphasize this is NOT a diagnosis\n- Encourage professional medical consultation\n- If the image is unclear or not medical in nature, say so\n- Focus on observable characteristics, not definitive diagnoses\n- Use empathetic, reassuring language"
+  },
+  "session": {
+    "timeout_minutes": 60,
+    "max_history_turns": 20,
+    "context_turns_for_response": 5
+  }
+}

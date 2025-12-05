@@ -108,49 +108,70 @@ export function MedicalInfoPanel({ isOpen, onClose }: MedicalInfoPanelProps) {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Activity className="text-red-500" size={20} />
-                    Symptoms Classification Model
+                    Disease Prediction Ensemble
                   </CardTitle>
                   <CardDescription>
-                    SVM-based model for symptom analysis and condition prediction
+                    7-model ensemble system for symptom analysis and disease prediction
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                       <div className="text-2xl font-bold text-red-500">
-                        {(modelInfo.symptomsModel.accuracy * 100).toFixed(1)}%
+                        98.75%
                       </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">Accuracy</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Test Accuracy</div>
                     </div>
                     <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                       <div className="text-2xl font-bold text-blue-500">
-                        {modelInfo.symptomsModel.numClasses}
+                        24
                       </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">Conditions</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Diseases</div>
                     </div>
                     <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                      <div className="text-2xl font-bold text-green-500">SVM</div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">Model Type</div>
+                      <div className="text-2xl font-bold text-green-500">7</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">ML Models</div>
                     </div>
                     <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                      <div className="text-2xl font-bold text-purple-500">5K</div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">Features</div>
+                      <div className="text-2xl font-bold text-purple-500">1.2K</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Training Samples</div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h5 className="font-semibold mb-2">Ensemble Models:</h5>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {[
+                        { name: 'Naive Bayes', accuracy: '100%' },
+                        { name: 'SVM Linear', accuracy: '99.6%' },
+                        { name: 'SVM RBF', accuracy: '99.6%' },
+                        { name: 'Logistic Regression', accuracy: '99.6%' },
+                        { name: 'Random Forest', accuracy: '99.2%' },
+                        { name: 'Stacking Ensemble', accuracy: '98.3%' },
+                        { name: 'XGBoost', accuracy: '96.7%' },
+                      ].map((model) => (
+                        <Badge key={model.name} variant="outline" className="text-xs">
+                          {model.name} ({model.accuracy})
+                        </Badge>
+                      ))}
                     </div>
                   </div>
                   
                   <div>
                     <h5 className="font-semibold mb-2">Supported Medical Conditions:</h5>
                     <div className="flex flex-wrap gap-2">
-                      {modelInfo.symptomsModel.conditions.slice(0, 12).map((condition) => (
+                      {[
+                        'Psoriasis', 'Diabetes', 'Hypertension', 'Migraine', 'Arthritis',
+                        'Common Cold', 'Bronchial Asthma', 'Dengue', 'Malaria', 'Typhoid',
+                        'Pneumonia', 'Acne'
+                      ].map((condition) => (
                         <Badge key={condition} variant="secondary" className="text-xs">
                           {condition}
                         </Badge>
                       ))}
-                      {modelInfo.symptomsModel.conditions.length > 12 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{modelInfo.symptomsModel.conditions.length - 12} more
-                        </Badge>
-                      )}
+                      <Badge variant="outline" className="text-xs">
+                        +12 more
+                      </Badge>
                     </div>
                   </div>
                 </CardContent>
@@ -164,45 +185,76 @@ export function MedicalInfoPanel({ isOpen, onClose }: MedicalInfoPanelProps) {
                     Medical Knowledge System (RAG)
                   </CardTitle>
                   <CardDescription>
-                    Retrieval-Augmented Generation for medical question answering
+                    Retrieval-Augmented Generation powered by Gemini 2.0 Flash
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                      <div className="text-2xl font-bold text-blue-500">
-                        {modelInfo.ragModel.totalChunks}
+                      <div className="text-xl font-bold text-blue-500">
+                        23.6K
                       </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">Knowledge Chunks</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Chunks in DB</div>
                     </div>
                     <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                      <div className="text-2xl font-bold text-green-500">
-                        {modelInfo.ragModel.topK}
+                      <div className="text-xl font-bold text-green-500">
+                        93.3%
                       </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">Top Retrieval</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Retrieval Quality</div>
                     </div>
                     <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                      <div className="text-2xl font-bold text-purple-500">
-                        {modelInfo.ragModel.chunkSize}
+                      <div className="text-xl font-bold text-purple-500">
+                        Gemini 2.0
                       </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">Chunk Size</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">LLM Engine</div>
                     </div>
                     <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                      <div className="text-xl font-bold text-orange-500">RAG</div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">Architecture</div>
+                      <div className="text-xl font-bold text-orange-500">384</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Embedding Dim</div>
                     </div>
                   </div>
                   
                   <div>
-                    <h5 className="font-semibold mb-2">Knowledge Base Topics:</h5>
+                    <h5 className="font-semibold mb-2">Technical Stack:</h5>
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
+                        <div className="text-xs font-semibold text-blue-700 dark:text-blue-300">Vector Database</div>
+                        <div className="text-sm text-blue-600 dark:text-blue-400">ChromaDB</div>
+                      </div>
+                      <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-800">
+                        <div className="text-xs font-semibold text-green-700 dark:text-green-300">Embeddings</div>
+                        <div className="text-sm text-green-600 dark:text-green-400">all-MiniLM-L6-v2</div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h5 className="font-semibold mb-2">Knowledge Source:</h5>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                      Gale Encyclopedia of Medicine - Comprehensive medical reference with 23,555 indexed chunks
+                    </p>
                     <div className="flex flex-wrap gap-2">
                       {[
-                        'General Health', 'Chronic Conditions', 'Medications', 
-                        'Emergency Care', 'Preventive Care', 'Treatment Guidelines',
-                        'Symptoms & Diagnosis', 'Medical Procedures'
+                        'Disease Information', 'Treatment Guidelines', 'Symptoms & Diagnosis', 
+                        'Medications', 'Prevention', 'Medical Procedures',
+                        'Emergency Care', 'Chronic Conditions'
                       ].map((topic) => (
                         <Badge key={topic} variant="secondary" className="text-xs">
                           {topic}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h5 className="font-semibold mb-2">Query Processing:</h5>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        'Definition Queries', 'Symptom Analysis', 'Treatment Options', 
+                        'Cause Identification', 'Prevention Strategies'
+                      ].map((type) => (
+                        <Badge key={type} variant="outline" className="text-xs">
+                          {type}
                         </Badge>
                       ))}
                     </div>

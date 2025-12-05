@@ -16,7 +16,6 @@ import { ServerStatusIndicator, ServerStatusCard } from '@/components/ServerStat
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
-  const [onlineUsers] = useState(1247);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [showMedicalInfo, setShowMedicalInfo] = useState(false);
@@ -32,15 +31,29 @@ export default function ChatPage() {
   }, [messages, isTyping]);
 
   useEffect(() => {
-    // Add welcome message
+    // Add welcome message with structured format
+    const welcomeResponse = {
+      response: "Hello! 👋 Welcome to our **Hybrid Medical Chatbot**! I'm here to help you with:\n\n## What I Can Help With\n\n• 🩺 **Symptom Analysis** - Describe your symptoms for possible condition identification\n• 🧠 **Medical Questions** - Ask about health conditions, treatments, and medications\n• 📚 **Health Information** - Get educational content about medical topics\n• 🏥 **General Guidance** - Receive health tips and preventive care advice\n\n## Important Medical Disclaimer\n\n⚠️ I provide educational information only and should never replace professional medical advice, diagnosis, or treatment. Always consult with healthcare professionals for medical concerns.\n\nHow can I assist you with your health questions today?",
+      queryType: 'greeting' as const,
+      processingTime: 0,
+      systemUsed: 'Welcome Handler',
+      timestamp: new Date().toISOString(),
+      session_id: 'welcome',
+      conversation_turn: 0
+    };
+
     const welcomeMessage: Message = {
       id: '1',
-  content: "Hello! 👋 Welcome to our **Hybrid Medical Chatbot**! I'm here to help you with:\n\n• 🩺 **Symptom Analysis** - Describe your symptoms for possible condition identification\n• 🧠 **Medical Questions** - Ask about health conditions, treatments, and medications\n• 📚 **Health Information** - Get educational content about medical topics\n• 🏥 **General Guidance** - Receive health tips and preventive care advice\n\n**⚠️ Important Medical Disclaimer:**\nI provide educational information only and should never replace professional medical advice, diagnosis, or treatment. Always consult with healthcare professionals for medical concerns.\n\nHow can I assist you with your health questions today?",
+      content: welcomeResponse,
       sender: 'bot',
       timestamp: new Date()
     };
     setMessages([welcomeMessage]);
   }, []);
+
+  const handleDeleteMessage = (messageId: string) => {
+    setMessages(prev => prev.filter(msg => msg.id !== messageId));
+  };
 
   const handleSendMessage = async (content: string, attachments?: Attachment[]) => {
     // Create user message with attachments info
@@ -78,9 +91,10 @@ export default function ChatPage() {
         console.log('📝 Session established:', botResponse.session_id);
       }
       
+      // Pass full response object for enhanced formatting
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: botResponse.response || botResponse,
+        content: botResponse,
         sender: 'bot',
         timestamp: new Date()
       };
@@ -134,13 +148,13 @@ export default function ChatPage() {
                 <p className={darkMode ? 'text-gray-300' : 'text-gray-600'}>
                   Hybrid Medical Chatbot - Symptom Analysis & Health Guidance
                 </p>
-                <div className="flex items-center gap-1">
+                {/* <div className="flex items-center gap-1">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                   <span className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                     <Users size={12} className="inline mr-1" />
                     {onlineUsers.toLocaleString()} online
                   </span>
-                </div>
+                </div> */}
               </div>
             </div>
           </div>
@@ -151,7 +165,7 @@ export default function ChatPage() {
             <ServerStatusIndicator />
             
             <div className="flex items-center gap-2">
-              <Button
+              {/* <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setSoundEnabled(!soundEnabled)}
@@ -165,7 +179,7 @@ export default function ChatPage() {
                 ) : (
                   <VolumeX size={16} className={darkMode ? 'text-gray-300' : 'text-gray-600'} />
                 )}
-              </Button>
+              </Button> */}
               <Button
                 variant="ghost"
                 size="sm"
@@ -207,7 +221,7 @@ export default function ChatPage() {
             )}
             
             {messages.map((message) => (
-              <ChatMessage key={message.id} message={message} />
+              <ChatMessage key={message.id} message={message} onDelete={handleDeleteMessage} />
             ))}
             {isTyping && <TypingIndicator />}
             <div ref={messagesEndRef} />

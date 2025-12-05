@@ -52,6 +52,7 @@ from src.rag_pipeline import RAGPipeline
 from response_formatter import MedicalResponseFormatter, PatientContext
 from symptom_extractor import SymptomExtractor, analyze_symptoms
 from conversation_manager import ConversationManager, get_conversation_manager
+from chatbot_config import get_config, ChatbotConfig
 
 # Configure logging to suppress ChromaDB telemetry errors
 logging.basicConfig(level=logging.INFO)
@@ -294,52 +295,31 @@ app.add_middleware(
 
 def detect_query_type(message: str) -> str:
     """Detect whether a query is symptom-related, general, greeting, or hybrid"""
+    config = get_config()
     message_lower = message.lower().strip()
     
-    # Check for simple greetings first
-    greetings = ['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening', 
-                 'howdy', 'greetings', 'hi there', 'hello there', 'hey there']
+    # Check for simple greetings first (from config)
+    greetings = config.query_detection.greetings
     if message_lower in greetings or message_lower.rstrip('!.') in greetings:
         return 'greeting'
     
-    # Check for non-medical queries
-    non_medical = ['weather', 'time', 'date', 'news', 'sports', 'movie', 'music', 'game']
-    if any(word in message_lower for word in non_medical) and not any(med in message_lower for med in ['symptom', 'pain', 'disease', 'health']):
+    # Check for non-medical queries (from config)
+    non_medical = config.query_detection.off_topic_keywords
+    medical_overrides = config.query_detection.medical_overrides
+    if any(word in message_lower for word in non_medical) and not any(med in message_lower for med in medical_overrides):
         return 'off_topic'
     
-    # Prevention/lifestyle questions should be treated as general, not symptoms
-    prevention_patterns = [
-        'how can i prevent', 'how to prevent', 'prevention of', 'avoid getting',
-        'reduce risk', 'how to avoid', 'prevent getting', 'stay healthy',
-        'how to protect', 'what should i eat', 'diet for', 'exercise for',
-        'lifestyle', 'tips for', 'how to improve'
-    ]
+    # Prevention/lifestyle questions should be treated as general, not symptoms (from config)
+    prevention_patterns = config.query_detection.prevention_patterns
     if any(pattern in message_lower for pattern in prevention_patterns):
         return 'general'
     
-    # Symptom indicators - current symptoms the user is experiencing
-    symptom_keywords = [
-        'pain', 'hurt', 'ache', 'fever', 'cough', 'headache', 'nausea', 'vomit',
-        'dizzy', 'tired', 'fatigue', 'rash', 'itch', 'swollen', 'bleeding',
-        'difficulty breathing', 'chest pain', 'abdominal pain', 'back pain',
-        'joint pain', 'muscle pain', 'sore throat', 'runny nose', 'congestion',
-        'diarrhea', 'constipation', 'weight loss', 'weight gain', 'trouble sleeping',
-        'patches', 'scaly', 'thirst', 'urination', 'blurred vision'
-    ]
+    # Symptom indicators - current symptoms the user is experiencing (from config)
+    symptom_keywords = config.query_detection.symptom_keywords
+    symptom_patterns = config.query_detection.symptom_patterns
     
-    symptom_patterns = [
-        'i have', 'i am having', 'i feel', 'i am feeling', 'i\'m experiencing',
-        'experiencing', 'suffering from', 'my .* is', 'my .* are',
-        'i\'ve been', 'i have been', 'started having'
-    ]
-    
-    # General medical question indicators
-    general_keywords = [
-        'what is', 'what are', 'how does', 'what causes', 'treatment for', 
-        'how is .* treated', 'prevention', 'risk factors', 'complications', 
-        'prognosis', 'medication', 'therapy', 'side effects', 'symptoms of',
-        'difference between', 'how to treat', 'what are the symptoms'
-    ]
+    # General medical question indicators (from config)
+    general_keywords = config.query_detection.general_keywords
     
     # Check for symptom indicators
     has_symptoms = (
@@ -370,17 +350,9 @@ def detect_query_type(message: str) -> str:
 
 def extract_red_flag_symptoms(message: str) -> list[str]:
     """Identify potential emergency or high-risk symptoms mentioned by the user."""
+    config = get_config()
     message_lower = message.lower()
-    red_flag_map = {
-        'chest pain': ['chest pain', 'tightness in chest', 'pressure in chest', 'pain in my chest'],
-        'shortness of breath': ['shortness of breath', 'difficulty breathing', 'trouble breathing', 'can’t breathe', 'cant breathe'],
-        'high fever': ['high fever', 'fever over', 'fever of 103', 'very high fever'],
-        'confusion': ['confused', 'confusion', 'disoriented'],
-        'persistent vomiting': ['persistent vomiting', 'vomiting blood', 'can’t keep', 'cant keep anything down'],
-        'severe abdominal pain': ['severe abdominal pain', 'extreme stomach pain', 'sharp abdominal pain'],
-        'neurological changes': ['slurred speech', 'weakness on one side', 'numbness on one side', 'sudden weakness'],
-        'fainting': ['fainting', 'passed out', 'loss of consciousness']
-    }
+    red_flag_map = config.safety.red_flag_patterns
 
     detected = []
     for label, patterns in red_flag_map.items():
@@ -414,6 +386,91 @@ def should_request_additional_context(symptom_response: SymptomResponse, red_fla
     uncertain_prediction = primary_confidence < 0.55 or consensus_ratio < 0.6 or probability_gap < 12.0
 
     return bool(red_flags) or uncertain_prediction
+
+
+# ============================================
+# Configuration Management Endpoints
+# ============================================
+
+@app.get("/config")
+async def get_configuration():
+    """Get current chatbot configuration"""
+    config = get_config()
+    return {
+        "query_detection": {
+            "greetings": config.query_detection.greetings,
+            "symptom_keywords": config.query_detection.symptom_keywords,
+            "prevention_patterns": config.query_detection.prevention_patterns,
+            "off_topic_keywords": config.query_detection.off_topic_keywords,
+            "general_keywords": config.query_detection.general_keywords
+        },
+        "clarification": {
+            "low_confidence_threshold": config.clarification.low_confidence_threshold,
+            "high_confidence_threshold": config.clarification.high_confidence_threshold,
+            "min_word_count_for_detailed": config.clarification.min_word_count_for_detailed,
+            "max_clarification_questions": config.clarification.max_clarification_questions
+        },
+        "response": {
+            "empathetic_openings": config.response.empathetic_openings,
+            "follow_up_questions_by_type": config.response.follow_up_questions
+        },
+        "safety": {
+            "emergency_keywords": config.safety.emergency_keywords,
+            "red_flag_patterns": config.safety.red_flag_patterns
+        }
+    }
+
+
+@app.post("/config/update")
+async def update_configuration(updates: Dict[str, Any]):
+    """Update chatbot configuration dynamically
+    
+    Example request body:
+    {
+        "query_detection.greetings": ["hello", "hi", "hey", "hola"],
+        "clarification.low_confidence_threshold": 0.4,
+        "response.empathetic_openings": ["I understand...", "Thank you for sharing..."]
+    }
+    """
+    config = get_config()
+    updated_fields = []
+    
+    for key, value in updates.items():
+        try:
+            parts = key.split('.')
+            if len(parts) == 2:
+                section, field = parts
+                if hasattr(config, section):
+                    section_obj = getattr(config, section)
+                    if hasattr(section_obj, field):
+                        setattr(section_obj, field, value)
+                        updated_fields.append(key)
+                    else:
+                        logger.warning(f"Unknown field: {field} in section {section}")
+                else:
+                    logger.warning(f"Unknown section: {section}")
+        except Exception as e:
+            logger.error(f"Error updating {key}: {e}")
+    
+    return {
+        "status": "success",
+        "updated_fields": updated_fields,
+        "message": f"Updated {len(updated_fields)} configuration fields"
+    }
+
+
+@app.get("/config/reload")
+async def reload_configuration():
+    """Reload configuration from file (if exists)"""
+    from chatbot_config import load_config_from_file
+    
+    config_path = Path(__file__).parent / "chatbot_config.json"
+    if config_path.exists():
+        load_config_from_file(str(config_path))
+        return {"status": "success", "message": "Configuration reloaded from file"}
+    else:
+        return {"status": "info", "message": "No config file found, using defaults"}
+
 
 @app.get("/health", response_model=ServerHealth)
 async def health_check():
