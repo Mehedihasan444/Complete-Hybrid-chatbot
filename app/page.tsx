@@ -120,11 +120,27 @@ export default function ChatPage() {
   };
 
   return (
-    <div className={`h-screen flex flex-col transition-all duration-500 ${
-      darkMode 
-        ? 'bg-gradient-to-br from-gray-900 via-blue-900 to-indigo-900' 
-        : 'bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100'
-    }`}>
+    <div 
+      className={`h-screen flex flex-col transition-all duration-500 ${
+        darkMode 
+          ? 'bg-gradient-to-br from-gray-900 via-blue-900 to-indigo-900' 
+          : 'bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100'
+      }`}
+      style={{
+        backgroundImage: darkMode ? 'none' : 'url(/assets/robot.jpg)',
+        backgroundSize: '600px auto',
+        backgroundPosition: 'center center',
+        backgroundRepeat: 'no-repeat',
+        backgroundBlendMode: 'overlay',
+        backgroundAttachment: 'fixed'
+      }}
+    >
+      {/* Overlay for better readability */}
+      {/* backdrop-blur-sm */}
+      <div className="absolute inset-0  dark:bg-gray-900/80 "></div>
+      
+      {/* Content wrapper with higher z-index */}
+      <div className="relative z-10 h-full flex flex-col">
       {/* Header */}
       <header className={`backdrop-blur-sm border-b p-4 shadow-lg transition-all duration-300 ${
         darkMode 
@@ -241,6 +257,7 @@ export default function ChatPage() {
         isOpen={showMedicalInfo} 
         onClose={() => setShowMedicalInfo(false)} 
       />
+      </div>
     </div>
   );
 }
