@@ -8,6 +8,7 @@ for intelligent medical query routing and response generation.
 
 import os
 import sys
+import re
 import logging
 import uuid
 import base64
@@ -292,42 +293,77 @@ app.add_middleware(
 )
 
 def detect_query_type(message: str) -> str:
-    """Detect whether a query is symptom-related, general, or hybrid"""
-    message_lower = message.lower()
+    """Detect whether a query is symptom-related, general, greeting, or hybrid"""
+    message_lower = message.lower().strip()
     
-    # Symptom indicators
+    # Check for simple greetings first
+    greetings = ['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening', 
+                 'howdy', 'greetings', 'hi there', 'hello there', 'hey there']
+    if message_lower in greetings or message_lower.rstrip('!.') in greetings:
+        return 'greeting'
+    
+    # Check for non-medical queries
+    non_medical = ['weather', 'time', 'date', 'news', 'sports', 'movie', 'music', 'game']
+    if any(word in message_lower for word in non_medical) and not any(med in message_lower for med in ['symptom', 'pain', 'disease', 'health']):
+        return 'off_topic'
+    
+    # Prevention/lifestyle questions should be treated as general, not symptoms
+    prevention_patterns = [
+        'how can i prevent', 'how to prevent', 'prevention of', 'avoid getting',
+        'reduce risk', 'how to avoid', 'prevent getting', 'stay healthy',
+        'how to protect', 'what should i eat', 'diet for', 'exercise for',
+        'lifestyle', 'tips for', 'how to improve'
+    ]
+    if any(pattern in message_lower for pattern in prevention_patterns):
+        return 'general'
+    
+    # Symptom indicators - current symptoms the user is experiencing
     symptom_keywords = [
         'pain', 'hurt', 'ache', 'fever', 'cough', 'headache', 'nausea', 'vomit',
         'dizzy', 'tired', 'fatigue', 'rash', 'itch', 'swollen', 'bleeding',
         'difficulty breathing', 'chest pain', 'abdominal pain', 'back pain',
         'joint pain', 'muscle pain', 'sore throat', 'runny nose', 'congestion',
-        'diarrhea', 'constipation', 'weight loss', 'weight gain', 'trouble sleeping'
+        'diarrhea', 'constipation', 'weight loss', 'weight gain', 'trouble sleeping',
+        'patches', 'scaly', 'thirst', 'urination', 'blurred vision'
     ]
     
     symptom_patterns = [
-        'i have', 'i am having', 'i feel', 'i am feeling', 'experiencing',
-        'symptoms of', 'suffering from', 'what could this be', 'diagnosis'
+        'i have', 'i am having', 'i feel', 'i am feeling', 'i\'m experiencing',
+        'experiencing', 'suffering from', 'my .* is', 'my .* are',
+        'i\'ve been', 'i have been', 'started having'
     ]
     
     # General medical question indicators
     general_keywords = [
-        'what is', 'how does', 'what causes', 'treatment for', 'prevention',
-        'risk factors', 'complications', 'prognosis', 'medication', 'therapy'
+        'what is', 'what are', 'how does', 'what causes', 'treatment for', 
+        'how is .* treated', 'prevention', 'risk factors', 'complications', 
+        'prognosis', 'medication', 'therapy', 'side effects', 'symptoms of',
+        'difference between', 'how to treat', 'what are the symptoms'
     ]
     
     # Check for symptom indicators
     has_symptoms = (
-        any(keyword in message_lower for keyword in symptom_keywords) or
-        any(pattern in message_lower for pattern in symptom_patterns)
+        any(keyword in message_lower for keyword in symptom_keywords) and
+        any(re.search(pattern, message_lower) for pattern in symptom_patterns)
     )
     
+    # Also check if describing current state without explicit "I have"
+    if not has_symptoms:
+        # Short messages with just symptom keywords likely need clarification
+        has_symptoms = (
+            len(message_lower.split()) <= 5 and
+            any(keyword in message_lower for keyword in symptom_keywords)
+        )
+    
     # Check for general medical questions
-    has_general = any(keyword in message_lower for keyword in general_keywords)
+    has_general = any(re.search(pattern, message_lower) for pattern in general_keywords)
     
     if has_symptoms and has_general:
         return 'hybrid'
     elif has_symptoms:
         return 'symptoms'
+    elif has_general:
+        return 'general'
     else:
         return 'general'
 
@@ -587,6 +623,53 @@ async def hybrid_chat(request: HybridRequest):
         
         # Determine query type (use extracted symptoms to help)
         query_type = request.query_type or detect_query_type(request.message)
+        logger.info(f"📝 Query: '{request.message[:50]}...' → Type: {query_type}")
+        
+        # Handle greetings
+        if query_type == 'greeting':
+            greeting_response = """Hello! 👋 Welcome to the Medical AI Assistant!
+
+I'm here to help you with:
+• 🩺 **Symptom Analysis** - Describe your symptoms and I'll help identify possible conditions
+• 📚 **Medical Information** - Ask about diseases, treatments, medications, and prevention
+• 🖼️ **Image Analysis** - Share images of skin conditions for visual analysis
+
+**How can I help you today?**
+
+*Remember: I provide educational information only. For medical emergencies, please call emergency services.*"""
+            
+            return HybridResponse(
+                response=greeting_response,
+                query_type="greeting",
+                processing_time_ms=(datetime.now() - start_time).total_seconds() * 1000,
+                system_used="Greeting Handler",
+                medical_disclaimer=MEDICAL_DISCLAIMER,
+                session_id=session_id,
+                conversation_turn=conversation_turn
+            )
+        
+        # Handle off-topic queries
+        if query_type == 'off_topic':
+            off_topic_response = """I'm a medical AI assistant, so I'm best suited to help with health-related questions! 🏥
+
+**I can help you with:**
+• Symptom analysis and possible conditions
+• Information about diseases and treatments
+• Medication information and side effects
+• Prevention and lifestyle advice
+• Analyzing images of skin conditions
+
+**What health topic can I help you with today?**"""
+            
+            return HybridResponse(
+                response=off_topic_response,
+                query_type="off_topic",
+                processing_time_ms=(datetime.now() - start_time).total_seconds() * 1000,
+                system_used="Off-Topic Handler",
+                medical_disclaimer=MEDICAL_DISCLAIMER,
+                session_id=session_id,
+                conversation_turn=conversation_turn
+            )
         
         # Check for urgent red flags first
         if symptom_analysis.red_flags_detected:
@@ -619,8 +702,33 @@ async def hybrid_chat(request: HybridRequest):
             confidence_value = symptom_response.confidence or 0.0
             consensus_ratio = symptom_response.consensus_ratio or 1.0
             
-            # Check if we need clarifying questions
-            if symptom_analysis.needs_clarification and confidence_value < 0.6:
+            # Determine if we should show prediction or ask for clarification
+            # Key insight: If we have MULTIPLE symptoms described OR detailed description, give prediction
+            num_symptoms = len(symptom_analysis.symptoms)
+            word_count = len(request.message.split())
+            has_detailed_description = word_count >= 6  # 6+ words is fairly descriptive
+            
+            # Count symptom keywords in message for better detection
+            symptom_keyword_count = sum(1 for kw in ['pain', 'ache', 'itch', 'rash', 'patches', 'scaly', 
+                'thirst', 'urination', 'tired', 'fatigue', 'fever', 'cough', 'swollen', 'nausea',
+                'dizzy', 'headache', 'burning', 'tingling', 'numbness', 'weight'] 
+                if kw in request.message.lower())
+            
+            # Only ask for clarification if:
+            # 1. Very short message (< 5 words) with vague symptoms
+            # 2. No real symptoms detected at all
+            # 3. Very low model confidence AND no detailed description
+            should_clarify = (
+                (word_count < 5 and symptom_keyword_count <= 1) or  # Very short and vague
+                (num_symptoms == 0 and symptom_keyword_count == 0) or  # No symptoms found
+                (confidence_value < 0.2 and not has_detailed_description)  # Very uncertain and short
+            )
+            
+            # Override: If message has 2+ symptom keywords OR 8+ words, don't clarify
+            if symptom_keyword_count >= 2 or word_count >= 8:
+                should_clarify = False
+            
+            if should_clarify:
                 # Ask for more details instead of giving uncertain prediction
                 clarification_response = "I'd like to help you better understand what you're experiencing. To provide more useful guidance, could you share a few more details?\n\n"
                 clarification_response += "**Please tell me:**\n"
