@@ -12,7 +12,7 @@ A sophisticated AI-powered medical chatbot that intelligently combines **trained
 - **Smart Model Selection**: Automatically selects best models based on query complexity
 
 ### **2. Medical Knowledge RAG System**
-- **gemini-2.0-flash Integration**: Uses Google's advanced LLM for intelligent responses
+- **gemini-2.5-flash Integration**: Uses Google's advanced LLM for intelligent responses
 - **ChromaDB Vector Store**: Efficient semantic search through medical encyclopedia
 - **Medical Encyclopedia**: "The Gale Encyclopedia of Medicine (3rd Edition)" knowledge base
 - **Source Citations**: Automatic referencing of relevant medical sources
