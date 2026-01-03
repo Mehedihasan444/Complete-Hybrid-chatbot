@@ -6,12 +6,13 @@
 1. **New Endpoint**: `/chat-with-attachments`
    - Accepts multiple file uploads (PDF, images, text files)
    - Extracts text from PDFs and documents
-   - Processes images (basic handling, can be enhanced with vision models)
+   - Analyzes medical images using **Groq LLAMA 3.2 Vision** (11B model)
    - Integrates with HybridMed-AI pipeline
 
 2. **Dependencies Added**:
    - `PyPDF2` - PDF text extraction
    - `python-multipart` - File upload handling in FastAPI
+   - Vision analysis via Groq API (no additional dependencies needed)
 
 ### Frontend (Next.js)
 1. **ChatInput Component** - Already has:
@@ -75,12 +76,18 @@
 - ✅ **Word Documents** (`.doc`, `.docx`) - Supported via PDF conversion
 
 ### Images
-- ✅ **All Image Formats** (`image/*`)
-- 📷 **Current**: Basic image receipt (noted in response)
-- 🔮 **Future Enhancement**: Vision model integration for:
-  - Skin condition analysis
-  - Medical imaging interpretation
-  - Visual symptom detection
+- ✅ **All Image Formats** (`image/*`) - JPG, PNG, BMP, etc.
+- 🔬 **AI Vision Analysis**: Powered by **Groq LLAMA 3.2 Vision (11B)**
+  - Detailed visual assessment of medical images
+  - Identifies skin conditions, rashes, lesions, wounds
+  - Differential diagnosis suggestions based on visual features
+  - Severity assessment (mild, moderate, severe)
+  - Urgency recommendations
+- 📋 **Analysis includes**:
+  - Visual characteristics (colors, patterns, textures)
+  - Possible medical conditions
+  - Recommended next steps
+  - Professional medical evaluation reminders
 
 ### File Size Limits
 - **Frontend**: 10MB per file
@@ -115,7 +122,25 @@ Response Generation
 ### 📎 Attachments Processed
 ✅ **2 file(s)** uploaded successfully
 📄 Extracted text from 1 document(s)
-🖼️ Received 1 image(s)
+🖼️ Analyzed 1 image(s) with LLAMA 3.2 Vision
+
+---
+
+📸 **Visual Analysis** (LLAMA 3.2 Vision)
+
+Based on the image provided, I observe:
+- Reddish, raised skin lesions with irregular borders
+- Possible inflammatory response
+- Severity: Moderate
+
+Possible conditions:
+1. Contact dermatitis
+2. Eczema (atopic dermatitis)
+3. Urticaria (hives)
+
+Recommendation: Consult a dermatologist within 24-48 hours, especially if symptoms worsen or spread.
+
+⚠️ Image Analysis Disclaimer: This is an AI-based visual assessment and should not replace professional medical diagnosis.
 
 ---
 
@@ -127,7 +152,7 @@ Response Generation
 **Confidence:** ...%
 
 ---
-*Model: LLAMA 3.1 RAG | Processing: 2341ms*
+*Model: LLAMA 3.1 RAG + Vision | Processing: 3127ms*
 
 ⚠️ **Medical Disclaimer:** ...
 ```
@@ -144,18 +169,26 @@ Response Generation
 4. Expect: System extracts PDF text + analyzes symptoms → suggests Flu/Common Cold
 ```
 
-### Test 2: Upload Image (X-ray, skin condition photo)
+### Test 2: Upload Medical Image
 ```
-1. Upload medical image via 🖼️ button
-2. Add description: "Rash on arm for 3 days, itchy"
-3. Expect: System notes image received + analyzes text description
+1. Take/upload a photo of a skin condition, rash, wound, or injury
+2. Upload via 🖼️ button
+3. Add context: "Appeared 3 days ago, itchy and spreading"
+4. Expect: 
+   - LLAMA 3.2 Vision analyzes visual characteristics
+   - Provides differential diagnoses
+   - Assesses severity
+   - Recommends urgency of medical consultation
 ```
 
-### Test 3: Multiple Files
+### Test 3: Multiple Files with Vision
 ```
-1. Upload 2 PDFs + 1 image
-2. Add message describing symptoms
-3. Expect: All files processed, text extracted from PDFs, comprehensive analysis
+1. Upload 1 PDF (medical report) + 1 image (skin condition)
+2. Add message: "Please analyze both my lab results and this rash"
+3. Expect: 
+   - PDF text extracted and analyzed
+   - Image visually analyzed with LLAMA 3.2 Vision
+   - Comprehensive response correlating both sources
 ```
 
 ---
@@ -192,16 +225,13 @@ Response Generation
 
 ## 🚀 Future Enhancements
 
-### Vision Model Integration
+### Enhanced Vision Capabilities
 ```python
-# Add to backend
-from transformers import pipeline
-vision_classifier = pipeline("image-classification", model="microsoft/biovil-t")
-
-# In endpoint
-if file_type.startswith("image/"):
-    image_analysis = vision_classifier(file_content)
-    image_descriptions.append(f"Detected: {image_analysis}")
+# Multi-modal analysis combining text + vision
+def correlate_symptoms_with_image(text_symptoms, visual_analysis):
+    # Cross-reference visual findings with reported symptoms
+    # Identify discrepancies or confirmations
+    pass
 ```
 
 ### OCR for Scanned Documents

@@ -92,18 +92,32 @@ function AnalysisBadge({
 }) {
   if (!condition) return null;
 
+  const isUncertain = confidence! < 0.70;
+  
   const confidenceColor =
     confidence! >= 0.8 ? 'bg-green-100 text-green-800' :
-    confidence! >= 0.6 ? 'bg-yellow-100 text-yellow-800' :
-    'bg-orange-100 text-orange-800';
+    confidence! >= 0.7 ? 'bg-yellow-100 text-yellow-800' :
+    'bg-red-100 text-red-800';
 
   const confidenceText =
     confidence! >= 0.8 ? 'High Confidence' :
-    confidence! >= 0.6 ? 'Moderate Confidence' :
-    'Low Confidence';
+    confidence! >= 0.7 ? 'Moderate Confidence' :
+    'UNCERTAIN';
+
+  const badgeStyle = isUncertain
+    ? 'mb-4 bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-300 rounded-lg p-4 shadow-md'
+    : 'mb-4 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-lg p-4 shadow-sm';
 
   return (
-    <div className="mb-4 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-lg p-4 shadow-sm">
+    <div className={badgeStyle}>
+      {isUncertain && (
+        <div className="mb-3 flex items-center gap-2 bg-red-100 border border-red-400 rounded-md p-2">
+          <AlertTriangle size={18} className="text-red-600 flex-shrink-0" />
+          <span className="text-xs font-bold text-red-800">
+            ⚠️ UNCERTAIN PREDICTION - Confidence below 70%. Please consult a healthcare professional.
+          </span>
+        </div>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="flex items-center gap-2">
           <span className="text-2xl">🔍</span>
@@ -115,7 +129,7 @@ function AnalysisBadge({
         <div className="flex items-center gap-2">
           <span className="text-2xl">📊</span>
           <div>
-            <p className="text-xs font-semibold text-gray-600">Confidence</p>
+            <p className="text-xs font-semibold text-gray-600">Confidence Level</p>
             <div className="flex items-center gap-2">
               <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
                 <div
@@ -127,6 +141,7 @@ function AnalysisBadge({
                 {(confidence! * 100).toFixed(1)}%
               </span>
             </div>
+            <p className="text-xs text-gray-600 mt-1">{confidenceText}</p>
           </div>
         </div>
         {processingTime && (

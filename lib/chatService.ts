@@ -288,6 +288,37 @@ export async function generateBotResponseWithAttachments(
     // Format response similar to regular chat
     let formattedResponse = '';
     
+    // Check if this is an ImageAnalysisResponse (new format)
+    if (result.success !== undefined && result.analysis) {
+      // New format: ImageAnalysisResponse from /chat-with-attachments
+      formattedResponse += `### 📎 Image Analysis\n\n`;
+      formattedResponse += `**File:** ${result.filename}\n\n`;
+      formattedResponse += `---\n\n`;
+      
+      // Add the actual vision analysis content
+      formattedResponse += result.analysis;
+      
+      // Add system info footer
+      formattedResponse += `\n\n---\n*Processing: ${result.inference_time_ms?.toFixed(0) || 0}ms | Powered by Vision AI*`;
+      
+      // Add medical disclaimer
+      formattedResponse += `\n\n⚠️ **Medical Disclaimer:**\nThis AI-generated analysis is for educational purposes only and is not a substitute for professional medical advice, diagnosis, or treatment. Always seek the advice of qualified healthcare providers with questions about medical conditions. In case of emergency, contact emergency services immediately.`;
+      
+      const totalProcessingTime = Date.now() - startTime;
+
+      return {
+        response: formattedResponse,
+        queryType: 'hybrid',
+        processingTime: totalProcessingTime,
+        systemUsed: 'Vision AI',
+        medicalDisclaimer: "This AI-generated analysis is for educational purposes only and is not a substitute for professional medical advice, diagnosis, or treatment.",
+        timestamp: new Date().toISOString(),
+        session_id: sessionId || `session-${Date.now()}`,
+        conversation_turn: 1
+      };
+    }
+    
+    // Old format handling (for backward compatibility)
     // Add attachment processing info
     if (result.attachments_processed) {
       const proc = result.attachments_processed;
