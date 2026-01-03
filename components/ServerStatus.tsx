@@ -173,10 +173,6 @@ export function ServerStatusCard() {
     );
   }
 
-  const systemInfo = serverStatus.system_info;
-  const uptimeMinutes = Math.max(0, Math.round((systemInfo.uptime_seconds || 0) / 60));
-  const errorRate = (systemInfo.error_rate ?? 0).toFixed(2);
-
   return (
     <Card className="border-green-200">
       <CardHeader className="pb-3">
@@ -196,7 +192,7 @@ export function ServerStatusCard() {
         <div>
           <div className="text-xs font-medium mb-1">Models Loaded:</div>
           <div className="grid grid-cols-2 gap-1 text-xs">
-            {Object.entries(serverStatus.models_loaded).map(([model, loaded]) => (
+            {Object.entries(serverStatus.models).map(([model, loaded]) => (
               <div key={model} className="flex items-center gap-1">
                 <div className={`w-2 h-2 rounded-full ${loaded ? 'bg-green-500' : 'bg-red-500'}`} />
                 <span className="truncate">{model.replace(/_/g, ' ')}</span>
@@ -209,15 +205,8 @@ export function ServerStatusCard() {
         <div>
           <div className="text-xs font-medium mb-1">System Info:</div>
           <div className="text-xs text-muted-foreground space-y-0.5">
-            <div>Uptime: {uptimeMinutes}m</div>
-            <div>Total requests: {systemInfo.total_requests}</div>
-            <div>Symptom queries: {systemInfo.symptom_requests}</div>
-            <div>RAG queries: {systemInfo.rag_requests}</div>
-            <div>Hybrid queries: {systemInfo.hybrid_requests}</div>
-            <div>Error rate: {errorRate}%</div>
-            {systemInfo.last_error && (
-              <div className="text-red-500">Last error: {systemInfo.last_error}</div>
-            )}
+            <div>Status: {serverStatus.status}</div>
+            <div>All models loaded: {Object.values(serverStatus.models).every(Boolean) ? 'Yes' : 'No'}</div>
           </div>
         </div>
 

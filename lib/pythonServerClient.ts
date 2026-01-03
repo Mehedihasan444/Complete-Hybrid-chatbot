@@ -5,23 +5,12 @@
 
 export interface ServerHealthResponse {
   status: string;
-  timestamp: string;
-  models_loaded: {
-    disease_predictor: boolean;
-    rag_pipeline: boolean;
-    symptom_models: boolean;
-    rag_initialized: boolean;
-  };
-  system_info: {
-    startup_time: string | null;
-    total_requests: number;
-    symptom_requests: number;
-    rag_requests: number;
-    hybrid_requests: number;
-    errors: number;
-    uptime_seconds: number;
-    error_rate: number;
-    last_error?: string | null;
+  models: {
+    grok: boolean;
+    ml_ensemble: boolean;
+    biobert: boolean;
+    llama: boolean;
+    rag: boolean;
   };
 }
 
@@ -74,23 +63,24 @@ export interface ModelInfoResponse {
   timestamp: string;
 }
 
-export interface HybridChatRequest {
-  message: string;
-  query_type?: 'symptoms' | 'general' | 'hybrid';
-  session_id?: string;
+export interface ChatRequest {
+  query: string;
 }
 
-export interface HybridChatResponse {
-  response: string;
-  query_type: string;
-  confidence?: number;
-  predicted_condition?: string;
-  sources?: string[];
-  processing_time_ms: number;
-  system_used: string;
-  medical_disclaimer: string;
-  session_id: string;
-  conversation_turn: number;
+export interface PredictionResult {
+  disease: string;
+  confidence: number;
+  probability: number;
+}
+
+export interface ChatResponse {
+  success: boolean;
+  query_processed: string;
+  model_used: string;
+  predictions: PredictionResult[];
+  explanation: string;
+  inference_time_ms: number;
+  cascade_triggered?: boolean;
 }
 
 class PythonServerClient {
@@ -98,8 +88,8 @@ class PythonServerClient {
   private timeout: number;
 
   constructor() {
-    this.baseUrl = process.env.NEXT_PUBLIC_PYTHON_SERVER_URL || 'http://127.0.0.1:8000';
-    this.timeout = 30000; // 30 seconds
+    this.baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000';
+    this.timeout = 60000; // 60 seconds (increased for Kaggle)
   }
 
   private async makeRequest<T>(
@@ -111,6 +101,7 @@ class PythonServerClient {
     const defaultOptions: RequestInit = {
       headers: {
         'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true',  // Bypass ngrok browser warning
         ...options.headers,
       },
       signal: AbortSignal.timeout(this.timeout),
@@ -158,11 +149,11 @@ class PythonServerClient {
   }
 
   async getModelInfo(): Promise<ModelInfoResponse> {
-    return this.makeRequest<ModelInfoResponse>('/api/model-info');
+    return this.makeRequest<ModelInfoResponse>('/model-info');
   }
 
-  async hybridChat(request: HybridChatRequest): Promise<HybridChatResponse> {
-    return this.makeRequest<HybridChatResponse>('/chat', {
+  async hybridChat(request: ChatRequest): Promise<ChatResponse> {
+    return this.makeRequest<ChatResponse>('/chat', {
       method: 'POST',
       body: JSON.stringify(request),
     });

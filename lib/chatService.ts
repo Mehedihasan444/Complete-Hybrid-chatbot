@@ -168,52 +168,64 @@ export async function generateBotResponse(
       return generateFallbackResponse(message, detectedType);
     }
 
-    // Use the new hybrid chat endpoint
+    // Use the new chat endpoint
     const result = await pythonServerClient.hybridChat({
-      message: message,
-      query_type: detectedType,
-      session_id: sessionId || undefined
+      query: message
     });
 
-    // Format response based on system used
-    let formattedResponse = result.response;
-    const processingTimeMs = typeof result.processing_time_ms === 'number' ? result.processing_time_ms : undefined;
+    // Format response for frontend
+    let formattedResponse = '';
     
-    if (result.system_used?.includes('Disease Prediction')) {
-      // Add additional formatting for symptom predictions
-      if (result.predicted_condition && result.confidence) {
-        formattedResponse += `\n\n**Analysis Details:**\n`;
-        formattedResponse += `• Predicted Condition: ${result.predicted_condition}\n`;
-        formattedResponse += `• Confidence Level: ${(result.confidence * 100).toFixed(1)}%\n`;
-        if (processingTimeMs !== undefined) {
-          formattedResponse += `• Processing Time: ${processingTimeMs.toFixed(1)}ms`;
-        }
+    // Add explanation first (from LLAMA 3.1)
+    if (result.explanation) {
+      formattedResponse = result.explanation;
+    }
+    
+    // Add prediction information (only for symptom queries)
+    if (result.predictions && result.predictions.length > 0) {
+      const topPrediction = result.predictions[0];
+      
+      formattedResponse += `\n\n---\n\n### 🔬 HybridMed-AI Analysis\n\n`;
+      formattedResponse += `**Primary Diagnosis:** ${topPrediction.disease}\n`;
+      formattedResponse += `**Confidence:** ${(topPrediction.confidence * 100).toFixed(1)}%`;
+      
+      // Show cascade indicator
+      if (result.cascade_triggered) {
+        formattedResponse += ` ⚡ *(DL Model)*`;
       }
-    } else if (result.system_used?.includes('RAG')) {
-      // Add processing time for RAG responses (sources already in response)
-      if (processingTimeMs !== undefined) {
-        formattedResponse += `\n*Processing time: ${processingTimeMs.toFixed(1)}ms*`;
+      formattedResponse += `\n`;
+      
+      if (result.predictions.length > 1) {
+        formattedResponse += `\n**Differential Diagnosis:**\n`;
+        for (let i = 1; i < Math.min(result.predictions.length, 4); i++) {
+          const pred = result.predictions[i];
+          formattedResponse += `${i}. ${pred.disease} — ${(pred.confidence * 100).toFixed(1)}%\n`;
+        }
       }
     }
 
-    // Only add medical disclaimer if not already present in the response
-    // The backend now includes it in the formatted response
-    // This check prevents duplicate disclaimers
+    // Add system info footer
+    const modelName = result.cascade_triggered ? 'BioBERT (DL)' : 
+                      result.predictions && result.predictions.length > 0 ? 'ML Ensemble' : 'LLAMA 3.1 RAG';
+    formattedResponse += `\n\n---\n*Model: ${modelName} | Processing: ${result.inference_time_ms.toFixed(0)}ms | Powered by HybridMed-AI*`;
+
+    // Add medical disclaimer
+    formattedResponse += `\n\n⚠️ **Medical Disclaimer:**\nThis AI system provides educational information only and is not a substitute for professional medical advice, diagnosis, or treatment. Always seek the advice of qualified healthcare providers with questions about medical conditions. In case of emergency, contact emergency services immediately.`;
 
     const totalProcessingTime = Date.now() - startTime;
 
     return {
       response: formattedResponse,
-      queryType: result.query_type as 'symptoms' | 'general' | 'hybrid',
-      confidence: result.confidence,
-      predictedCondition: result.predicted_condition,
-      sources: result.sources,
+      queryType: detectedType,
+      confidence: result.predictions?.[0]?.confidence,
+      predictedCondition: result.predictions?.[0]?.disease,
+      sources: [], // RAG sources not directly available in new format
       processingTime: totalProcessingTime,
-      systemUsed: result.system_used,
-      medicalDisclaimer: result.medical_disclaimer,
+      systemUsed: result.model_used,
+      medicalDisclaimer: "This AI system provides educational information only and is not a substitute for professional medical advice, diagnosis, or treatment.",
       timestamp: new Date().toISOString(),
-      session_id: result.session_id,
-      conversation_turn: result.conversation_turn
+      session_id: `session-${Date.now()}`,
+      conversation_turn: 1
     };
 
   } catch (error) {
@@ -248,19 +260,22 @@ export async function generateBotResponseWithAttachments(
 
     // Create FormData for file upload
     const formData = new FormData();
-    formData.append('message', message || '');
-    if (sessionId) {
-      formData.append('session_id', sessionId);
-    }
+    formData.append('message', message || 'Please analyze these attachments');
     
     // Add files to FormData
     for (const attachment of attachments) {
       formData.append('files', attachment.file, attachment.name);
     }
 
-    // Send to backend with files
-    const response = await fetch('http://localhost:8000/chat-with-attachments', {
+    // Get backend URL
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://joye-unennobling-curiously.ngrok-free.dev';
+    
+    // Send to backend with files (add ngrok bypass header)
+    const response = await fetch(`${backendUrl}/chat-with-attachments`, {
       method: 'POST',
+      headers: {
+        'ngrok-skip-browser-warning': 'true',
+      },
       body: formData,
     });
 
@@ -270,20 +285,71 @@ export async function generateBotResponseWithAttachments(
 
     const result = await response.json();
     
+    // Format response similar to regular chat
+    let formattedResponse = '';
+    
+    // Add attachment processing info
+    if (result.attachments_processed) {
+      const proc = result.attachments_processed;
+      formattedResponse += `### 📎 Attachments Processed\n\n`;
+      formattedResponse += `✅ **${proc.total_files} file(s)** uploaded successfully\n`;
+      if (proc.text_extracted > 0) {
+        formattedResponse += `📄 Extracted text from ${proc.text_extracted} document(s)\n`;
+      }
+      if (proc.images_received > 0) {
+        formattedResponse += `🖼️ Received ${proc.images_received} image(s)\n`;
+      }
+      formattedResponse += `\n---\n\n`;
+    }
+    
+    // Add explanation
+    if (result.explanation) {
+      formattedResponse += result.explanation;
+    }
+    
+    // Add predictions if available
+    if (result.predictions && result.predictions.length > 0) {
+      const topPrediction = result.predictions[0];
+      
+      formattedResponse += `\n\n---\n\n### 🔬 HybridMed-AI Analysis\n\n`;
+      formattedResponse += `**Primary Diagnosis:** ${topPrediction.disease}\n`;
+      formattedResponse += `**Confidence:** ${(topPrediction.confidence * 100).toFixed(1)}%`;
+      
+      if (result.cascade_triggered) {
+        formattedResponse += ` ⚡ *(DL Model)*`;
+      }
+      formattedResponse += `\n`;
+      
+      if (result.predictions.length > 1) {
+        formattedResponse += `\n**Differential Diagnosis:**\n`;
+        for (let i = 1; i < Math.min(result.predictions.length, 4); i++) {
+          const pred = result.predictions[i];
+          formattedResponse += `${i}. ${pred.disease} — ${(pred.confidence * 100).toFixed(1)}%\n`;
+        }
+      }
+    }
+
+    // Add system info footer
+    const modelName = result.model_used || 'HybridMed-AI';
+    formattedResponse += `\n\n---\n*Model: ${modelName} | Processing: ${result.inference_time_ms?.toFixed(0) || 0}ms*`;
+
+    // Add medical disclaimer
+    formattedResponse += `\n\n⚠️ **Medical Disclaimer:**\nThis AI system provides educational information only and is not a substitute for professional medical advice, diagnosis, or treatment. Always seek the advice of qualified healthcare providers with questions about medical conditions. In case of emergency, contact emergency services immediately.`;
+
     const totalProcessingTime = Date.now() - startTime;
 
     return {
-      response: result.response,
-      queryType: result.query_type as 'symptoms' | 'general' | 'hybrid',
-      confidence: result.confidence,
-      predictedCondition: result.predicted_condition,
-      sources: result.sources,
+      response: formattedResponse,
+      queryType: result.query_type as 'symptoms' | 'general' | 'hybrid' || 'hybrid',
+      confidence: result.predictions?.[0]?.confidence,
+      predictedCondition: result.predictions?.[0]?.disease,
+      sources: result.sources || [],
       processingTime: totalProcessingTime,
-      systemUsed: result.system_used,
-      medicalDisclaimer: result.medical_disclaimer,
+      systemUsed: result.model_used,
+      medicalDisclaimer: "This AI system provides educational information only and is not a substitute for professional medical advice, diagnosis, or treatment.",
       timestamp: new Date().toISOString(),
-      session_id: result.session_id,
-      conversation_turn: result.conversation_turn
+      session_id: sessionId || `session-${Date.now()}`,
+      conversation_turn: 1
     };
 
   } catch (error) {

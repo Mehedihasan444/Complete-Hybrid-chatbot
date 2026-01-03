@@ -72,26 +72,38 @@ export function MedicalInfoPanel({ isOpen, onClose }: MedicalInfoPanelProps) {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Brain className="text-purple-500" size={20} />
-                Hybrid Medical Chatbot System
+                HybridMed-AI System v3.0
               </CardTitle>
               <CardDescription>
-                This system combines two AI approaches for comprehensive medical assistance
+                Intelligent medical chatbot with cascading ML/DL architecture and RAG
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                  <h4 className="font-semibold text-purple-700 dark:text-purple-300 mb-2">🧠 Query Classification</h4>
+                  <p className="text-sm text-purple-600 dark:text-purple-400">
+                    LLAMA 3.1 classifies queries and detects emergencies
+                  </p>
+                </div>
                 <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                  <h4 className="font-semibold text-blue-700 dark:text-blue-300 mb-2">Symptom Analysis</h4>
+                  <h4 className="font-semibold text-blue-700 dark:text-blue-300 mb-2">⚡ ML/DL Cascade</h4>
                   <p className="text-sm text-blue-600 dark:text-blue-400">
-                    Machine learning model trained to classify symptoms into medical conditions
+                    Fast ML Ensemble with BioBERT DL fallback for accuracy
                   </p>
                 </div>
                 <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                  <h4 className="font-semibold text-green-700 dark:text-green-300 mb-2">Medical Q&A</h4>
+                  <h4 className="font-semibold text-green-700 dark:text-green-300 mb-2">📚 RAG Knowledge</h4>
                   <p className="text-sm text-green-600 dark:text-green-400">
-                    RAG system providing answers from medical knowledge base
+                    44.4K chunks from Gale Encyclopedia + LLAMA 3.1
                   </p>
                 </div>
+              </div>
+              
+              <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                <p className="text-sm text-amber-800 dark:text-amber-200">
+                  <strong>Intelligent Routing:</strong> Symptom queries → ML/DL pipeline | General medical questions → Direct LLM/RAG | Emergency queries → Immediate alerts
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -108,19 +120,19 @@ export function MedicalInfoPanel({ isOpen, onClose }: MedicalInfoPanelProps) {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Activity className="text-red-500" size={20} />
-                    Disease Prediction Ensemble
+                    ML Ensemble + DL Cascade
                   </CardTitle>
                   <CardDescription>
-                    7-model ensemble system for symptom analysis and disease prediction
+                    Fast ML prediction with BioBERT deep learning cascade when confidence {"<"} 75%
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                       <div className="text-2xl font-bold text-red-500">
-                        98.75%
+                        97%
                       </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">Test Accuracy</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">ML Accuracy</div>
                     </div>
                     <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                       <div className="text-2xl font-bold text-blue-500">
@@ -129,17 +141,17 @@ export function MedicalInfoPanel({ isOpen, onClose }: MedicalInfoPanelProps) {
                       <div className="text-sm text-gray-600 dark:text-gray-400">Diseases</div>
                     </div>
                     <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                      <div className="text-2xl font-bold text-green-500">7</div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">ML Models</div>
+                      <div className="text-2xl font-bold text-green-500">75%</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Cascade Threshold</div>
                     </div>
                     <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                      <div className="text-2xl font-bold text-purple-500">1.2K</div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">Training Samples</div>
+                      <div className="text-2xl font-bold text-purple-500">~1.2s</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Avg Response</div>
                     </div>
                   </div>
 
                   <div>
-                    <h5 className="font-semibold mb-2">Ensemble Models:</h5>
+                    <h5 className="font-semibold mb-2">Primary: ML Ensemble (Fast)</h5>
                     <div className="flex flex-wrap gap-2 mb-3">
                       {[
                         { name: 'Naive Bayes', accuracy: '100%' },
@@ -147,13 +159,30 @@ export function MedicalInfoPanel({ isOpen, onClose }: MedicalInfoPanelProps) {
                         { name: 'SVM RBF', accuracy: '99.6%' },
                         { name: 'Logistic Regression', accuracy: '99.6%' },
                         { name: 'Random Forest', accuracy: '99.2%' },
-                        { name: 'Stacking Ensemble', accuracy: '98.3%' },
                         { name: 'XGBoost', accuracy: '96.7%' },
                       ].map((model) => (
                         <Badge key={model.name} variant="outline" className="text-xs">
                           {model.name} ({model.accuracy})
                         </Badge>
                       ))}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h5 className="font-semibold mb-2">Cascade: BioBERT DL (Accurate)</h5>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      <Badge variant="secondary" className="text-xs">
+                        PubMedBERT Fine-tuned
+                      </Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        Transformer Architecture
+                      </Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        Medical NER Optimized
+                      </Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        Activated when ML {"<"} 75%
+                      </Badge>
                     </div>
                   </div>
                   
@@ -182,31 +211,31 @@ export function MedicalInfoPanel({ isOpen, onClose }: MedicalInfoPanelProps) {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Database className="text-blue-500" size={20} />
-                    Medical Knowledge System (RAG)
+                    RAG System + LLAMA 3.1 (Fine-tuned)
                   </CardTitle>
                   <CardDescription>
-                    Retrieval-Augmented Generation powered by Gemini 2.0 Flash
+                    FAISS vector search with LLAMA 3.1 8B (4-bit, fine-tuned on Gale Encyclopedia)
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                       <div className="text-xl font-bold text-blue-500">
-                        23.6K
+                        44.4K
                       </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">Chunks in DB</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Medical Chunks</div>
                     </div>
                     <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                       <div className="text-xl font-bold text-green-500">
-                        93.3%
+                        LLAMA 3.1
                       </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">Retrieval Quality</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">8B (4-bit)</div>
                     </div>
                     <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                       <div className="text-xl font-bold text-purple-500">
-                        Gemini 2.0
+                        FAISS
                       </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">LLM Engine</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Vector Store</div>
                     </div>
                     <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                       <div className="text-xl font-bold text-orange-500">384</div>
@@ -215,11 +244,25 @@ export function MedicalInfoPanel({ isOpen, onClose }: MedicalInfoPanelProps) {
                   </div>
                   
                   <div>
+                    <h5 className="font-semibold mb-2">LLAMA 3.1 Dual Role:</h5>
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded border border-purple-200 dark:border-purple-800">
+                        <div className="text-xs font-semibold text-purple-700 dark:text-purple-300">Query Classification</div>
+                        <div className="text-sm text-purple-600 dark:text-purple-400">Sanitizes & routes queries</div>
+                      </div>
+                      <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
+                        <div className="text-xs font-semibold text-blue-700 dark:text-blue-300">Explanation Generation</div>
+                        <div className="text-sm text-blue-600 dark:text-blue-400">Patient-friendly responses</div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div>
                     <h5 className="font-semibold mb-2">Technical Stack:</h5>
                     <div className="grid grid-cols-2 gap-3 mb-3">
                       <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
                         <div className="text-xs font-semibold text-blue-700 dark:text-blue-300">Vector Database</div>
-                        <div className="text-sm text-blue-600 dark:text-blue-400">ChromaDB</div>
+                        <div className="text-sm text-blue-600 dark:text-blue-400">FAISS (Facebook AI)</div>
                       </div>
                       <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-800">
                         <div className="text-xs font-semibold text-green-700 dark:text-green-300">Embeddings</div>
@@ -231,7 +274,7 @@ export function MedicalInfoPanel({ isOpen, onClose }: MedicalInfoPanelProps) {
                   <div>
                     <h5 className="font-semibold mb-2">Knowledge Source:</h5>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                      Gale Encyclopedia of Medicine - Comprehensive medical reference with 23,555 indexed chunks
+                      The Gale Encyclopedia of Medicine (3rd Edition) - 44,387 indexed medical chunks with comprehensive coverage
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {[
@@ -247,11 +290,11 @@ export function MedicalInfoPanel({ isOpen, onClose }: MedicalInfoPanelProps) {
                   </div>
                   
                   <div>
-                    <h5 className="font-semibold mb-2">Query Processing:</h5>
+                    <h5 className="font-semibold mb-2">Safety Features:</h5>
                     <div className="flex flex-wrap gap-2">
                       {[
-                        'Definition Queries', 'Symptom Analysis', 'Treatment Options', 
-                        'Cause Identification', 'Prevention Strategies'
+                        'Emergency Detection', 'Red Flag Alerts', 'Medical Disclaimers', 
+                        'Professional Referral', 'Citation Tracking'
                       ].map((type) => (
                         <Badge key={type} variant="outline" className="text-xs">
                           {type}
