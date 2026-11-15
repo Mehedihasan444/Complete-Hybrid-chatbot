@@ -1,101 +1,82 @@
-# Hybrid Medical Chatbot - **COMPLETE INTEGRATION**
+# Hybrid Medical Chatbot — HybridMed-AI
 
-A sophisticated AI-powered medical chatbot that intelligently combines **trained machine learning models** for symptom analysis with an advanced **RAG (Retrieval-Augmented Generation) system** for comprehensive medical knowledge. Built with Next.js 13, TypeScript, FastAPI, and Python integration.
+A sophisticated AI-powered medical chatbot that intelligently combines **trained machine learning models** for symptom analysis with an advanced **RAG (Retrieval-Augmented Generation) system** for comprehensive medical knowledge. Built with Next.js 16 (App Router), TypeScript, and a Python FastAPI backend served from a GPU notebook (Kaggle).
 
-## 🎯 **DUAL AI SYSTEM ARCHITECTURE**
+> **Repository layout:** This repo contains the **Next.js frontend** and its API routes. The **AI/ML backend** (FastAPI + the trained models) lives in [`trainning-notebooks/`](./trainning-notebooks) and runs in a GPU notebook environment; the frontend talks to it over HTTP via `NEXT_PUBLIC_BACKEND_URL`.
 
-### **1. Disease Prediction Engine**
-- **Real Trained Models**: Uses your actual ML models (Naive Bayes, SVM, Random Forest, XGBoost)
-- **99%+ Accuracy**: Ensemble of top-performing models for symptom classification
-- **24 Medical Conditions**: Covers diabetes, hypertension, pneumonia, arthritis, etc.
-- **Confidence Scoring**: Provides prediction confidence with alternative diagnoses
-- **Smart Model Selection**: Automatically selects best models based on query complexity
+## 🎯 Dual AI System Architecture
 
-### **2. Medical Knowledge RAG System**
+### 1. Disease Prediction Engine
+- **Stacking ML Ensemble**: SVM, Random Forest, XGBoost, Naive Bayes & Logistic Regression (top-3 stacked, LogisticRegression meta-learner) with hybrid TF-IDF features and SMOTE
+- **DL Cascade**: fine-tuned PubMedBERT takes over when ML confidence < 75%
+- **24 Medical Conditions**: covers diabetes, hypertension, pneumonia, arthritis, etc.
+- **Confidence Scoring**: provides prediction confidence with alternative (differential) diagnoses
+- **Uncertainty Flag**: predictions below 70% confidence are flagged UNCERTAIN
+
+### 2. Medical Knowledge RAG System
 - **Groq LLM Routing**: Groq-hosted Qwen classifies queries and analyzes medical images
-- **Fine-Tuned LLaMA 3.1 8B**: Self-trained on the Gale Encyclopedia for medical reasoning
-- **FAISS Vector Store**: Semantic search over the medical encyclopedia (all-MiniLM-L6-v2)
-- **Medical Encyclopedia**: "The Gale Encyclopedia of Medicine (3rd Edition)" knowledge base
-- **Source Citations**: Automatic referencing of relevant medical sources
-- **Context-Aware**: Maintains conversation context for follow-up questions
+- **Fine-Tuned LLaMA 3.1 8B**: self-trained on the Gale Encyclopedia for medical reasoning/generation (4-bit NF4)
+- **FAISS Vector Store**: `IndexFlatIP` cosine search, `all-MiniLM-L6-v2` (384-dim), ~44,387 indexed chunks
+- **Knowledge Source**: "The Gale Encyclopedia of Medicine (3rd Edition)", chunked at 500 chars / 50 overlap
+- **Source Citations**: automatic referencing of relevant medical sources
+- **Context-Aware**: retrieved context grounds the generated explanation
 
-### **3. Intelligent Query Routing**
-- **Hybrid Detection**: Automatically detects symptom vs. general medical queries
-- **Multi-Modal Responses**: Can combine both systems for comprehensive answers
-- **Fallback Mechanisms**: Graceful handling when systems are unavailable
-- **Safety First**: Built-in medical disclaimers and safety warnings
+### 3. Intelligent Query Routing
+- **Hybrid Detection**: automatically detects symptom vs. general medical vs. emergency queries
+- **Multi-Modal Responses**: can combine prediction + knowledge for comprehensive answers
+- **Fallback Mechanisms**: graceful, clearly-marked local fallback when the backend is unavailable
+- **Safety First**: built-in medical disclaimers and emergency red-flag alerts
 
-## 🚀 **QUICK START GUIDE**
+## 🚀 Quick Start
 
-### **Prerequisites**
-- Node.js 16.x or later
-- Python 3.8+ 
-- Trained ML models (from disease prediction implementation)
-- RAG vector database (from LLM RAG implementation)
+### Prerequisites
+- Node.js 18+ (required by Next.js 16)
+- A GPU environment for the backend (Kaggle T4/V100, or any CUDA Jupyter)
+- Trained model artifacts — produced by the notebooks in `trainning-notebooks/` and loaded as Kaggle datasets
 
-### **Installation**
+### Installation
 
-1. **Install Node.js dependencies**:
+1. **Install frontend dependencies**:
    ```bash
    npm install
    ```
 
-2. **Set up Python backend** (Windows):
+2. **Run the Python backend** (GPU notebook):
+   Open `trainning-notebooks/final-chatbot-server.ipynb` in Kaggle (or another GPU Jupyter environment), add `GROQ_API_KEY` to the environment/secrets, and run all cells. The startup cell loads the model artifacts and prints a public **Cloudflare Quick Tunnel** URL (`https://*.trycloudflare.com`).
+   > The four artifacts it loads — the ML stacking ensemble, fine-tuned PubMedBERT, fine-tuned LLaMA 3.1, and the FAISS RAG index — are produced by the other notebooks in `trainning-notebooks/` and attached as Kaggle datasets.
+
+3. **Point the frontend at the backend**:
+   Copy the printed tunnel URL into `.env` (see `.env.example`):
    ```bash
-   npm run setup-python
+   NEXT_PUBLIC_BACKEND_URL=https://your-tunnel-url.trycloudflare.com
    ```
 
-   **Or Linux/Mac**:
-   ```bash
-   npm run setup-hybrid
-   ```
-
-3. **Set Groq API Key** (required for backend query classification & image analysis):
-   ```bash
-   # Windows
-   set GROQ_API_KEY=your_api_key_here
-   
-   # Linux/Mac
-   export GROQ_API_KEY=your_api_key_here
-   ```
-
-4. **Start both servers**:
-   ```bash
-   npm run start-all
-   ```
-
-### **Manual Setup**
-
-If you prefer to run servers separately:
-
-1. **Start the hybrid backend**:
-   ```bash
-   python hybrid_server.py
-   ```
-
-2. **Start the Next.js frontend**:
+4. **Start the frontend**:
    ```bash
    npm run dev
    ```
+   Then open http://localhost:3000.
 
-## 🏗️ **SYSTEM ARCHITECTURE**
+> The backend cannot be started with a plain `python` command — it lives in the notebook and needs a GPU plus the trained artifacts. There is no `npm run setup-*` or `start-all` script; the only npm scripts are `dev`, `build`, `start`, `lint`, and `health-check`.
+
+## 🏗️ System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Next.js Frontend                          │
+│                    Next.js Frontend (this repo)              │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────┐ │
 │  │   Chat UI       │  │  Health Tips    │  │ Model Info   │ │
 │  │   Components    │  │   Carousel      │  │   Panel      │ │
 │  └─────────────────┘  └─────────────────┘  └──────────────┘ │
 └─────────────────────────────────────────────────────────────┘
                               │
-                              │ HTTP/REST API
+                              │ HTTP/REST (NEXT_PUBLIC_BACKEND_URL)
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                 Hybrid Python Backend                       │
-│                    (FastAPI Server)                         │
+│          Hybrid Python Backend (trainning-notebooks/)       │
+│               FastAPI on Kaggle + Cloudflare tunnel          │
 │  ┌─────────────────────────────────────────────────────────┐ │
-│  │            Intelligent Query Router                     │ │
+│  │            Intelligent Query Router (Groq / Qwen)       │ │
 │  │  ┌─────────────────┐  ┌─────────────────┐              │ │
 │  │  │   Symptom       │  │    General      │              │ │
 │  │  │  Detection      │  │   Medical       │              │ │
@@ -103,383 +84,192 @@ If you prefer to run servers separately:
 │  └─────────────────────────────────────────────────────────┘ │
 │  ┌─────────────────┐              ┌─────────────────────────┐ │
 │  │    Disease      │              │      RAG System        │ │
-│  │   Prediction    │              │   (LLaMA  + Vector)    │ │
+│  │   Prediction    │              │  (LLaMA 3.1 + FAISS)   │ │
 │  │    Models       │              │                       │ │
 │  │ ┌─────────────┐ │              │ ┌─────────────────────┐ │ │
-│  │ │ Naive Bayes │ │              │ │   FAISS Vector      │ │ │
-│  │ │     SVM     │ │              │ │      Store         │ │ │
-│  │ │ Random Forest│ │              │ │                    │ │ │
-│  │ │   XGBoost   │ │              │ │ Medical Encyclopedia│ │ │
-│  │ └─────────────┘ │              │ └─────────────────────┘ │ │
+│  │ │ ML Ensemble │ │              │ │   FAISS Vector      │ │ │
+│  │ │ + PubMedBERT│ │              │ │      Store         │ │ │
+│  │ │   cascade   │ │              │ │                    │ │ │
+│  │ └─────────────┘ │              │ │ Gale Encyclopedia   │ │ │
 │  └─────────────────┘              └─────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## 🔧 **API ENDPOINTS**
+## 🔧 Backend API Endpoints
 
-### **Hybrid Chat** (Primary endpoint)
-```typescript
-POST /chat
-{
-  "message": "I have a headache and fever",
-  "query_type": "symptoms" // Optional: "symptoms", "general", "hybrid"
-}
-```
+The Python backend (`trainning-notebooks/final-chatbot-server.ipynb`) exposes:
 
-### **Symptom Prediction**
-```typescript
-POST /predict-symptoms
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/chat` | Classify → route → ML/DL cascade or RAG → LLaMA explanation |
+| POST | `/chat-with-attachments` | Medical image analysis (multipart `files` + optional `message`) |
+| GET | `/health` | Server + per-model health |
+| GET | `/model-info` | Model metadata (ML ensemble, PubMedBERT, LLaMA, RAG) |
+
+`/chat` request (Pydantic-validated):
+```json
 {
-  "symptoms": "headache, fever, nausea",
+  "query": "I have a headache and fever",
+  "use_cascade": true,
   "patient_age": 35,
-  "strategy": "smart_selection"
+  "patient_gender": "male"
 }
 ```
+`/chat` response includes `query_type`, `model_used`, `predictions[]` (disease + confidence), `explanation`, `cascade_triggered`, `cascade_reason`, `confidence_flag`, `emergency_info`, and `inference_time_ms`.
 
-### **Medical Q&A**
-```typescript
-POST /ask-medical
-{
-  "question": "What causes diabetes?",
-  "context_type": "general"
-}
-```
+The **frontend** additionally exposes Next.js routes under `/api/*`: `/api/chat`, `/api/attachments` (a server-side proxy that validates files before forwarding to the backend), `/api/auth/login`, `/api/auth/register`, `/api/conversations`, `/api/conversations/[id]`, `/api/health`, and `/api/model-info`.
 
-### **Health Check**
-```typescript
-GET /health
-// Returns server status and model availability
-```
+## 🩺 Intelligent Features
 
-## 🩺 **INTELLIGENT FEATURES**
+### Query Type Detection
+The backend (Groq/Qwen) classifies each query:
 
-### **Query Type Detection**
-The system automatically detects query types:
-
-**Symptom Queries** → Disease Prediction Models
+**Symptom queries** → ML/DL pipeline (with cascade)
 - "I have a headache and fever"
 - "Experiencing chest pain and difficulty breathing"
-- "My stomach hurts and I feel nauseous"
 
-**General Medical** → RAG Knowledge System
+**General medical** → RAG + LLaMA
 - "What causes diabetes?"
-- "How does hypertension affect the heart?"
 - "What are the risk factors for arthritis?"
 
-**Hybrid Queries** → Combined Response
-- "I have diabetes symptoms, what should I know about this condition?"
-- "My headache might be a migraine, tell me about migraines"
+**Emergency** → immediate alert + emergency protocol
+- "I have crushing chest pain and can't breathe"
 
-### **Response Features**
-- **Confidence Levels**: All predictions include confidence percentages
-- **Alternative Diagnoses**: Shows top 3-5 possible conditions
-- **Medical Recommendations**: Actionable advice based on predictions
-- **Source Citations**: RAG responses include medical source references
-- **Processing Metrics**: Response times and system performance data
-- **Safety Disclaimers**: Automatic medical safety warnings
+### Response Features
+- **Confidence Levels**: all predictions include confidence percentages
+- **Differential Diagnoses**: shows top alternative conditions
+- **Medical Recommendations**: actionable advice based on predictions
+- **Source Citations**: RAG responses reference medical sources
+- **Processing Metrics**: response times and model used
+- **Safety Disclaimers**: automatic medical safety warnings; UNCERTAIN flag below 70% confidence
 
-## 📊 **MODEL PERFORMANCE**
+## 📊 Model Performance
 
-### **Disease Prediction Models**
-| Model | Accuracy | Speed | Use Case |
-|-------|----------|--------|----------|
-| Naive Bayes | 100.0% | Fastest | Primary predictor |
-| SVM Linear | 99.58% | Fast | High confidence cases |
-| SVM RBF | 99.58% | Fast | Complex patterns |
-| Random Forest | 99.17% | Medium | Ensemble voting |
-| XGBoost | 96.67% | Slower | Complex cases |
+### Disease Prediction
+- **ML Stacking Ensemble**: hybrid TF-IDF (word 1-2gram + char 3-5gram) + SMOTE, 5-fold stratified cross-validation, top-3 base learners + LogisticRegression meta-learner
+- **DL Cascade**: fine-tuned PubMedBERT, triggered when ML confidence < 75%
+- **Uncertainty threshold**: 70% — predictions below this are flagged UNCERTAIN
+- **24 medical conditions** from the Symptom2Disease dataset
 
-### **RAG System Performance**
-- **Retrieval Speed**: < 200ms average
-- **Response Generation**: < 2 seconds via fine-tuned LLaMA 3.1 (Groq handles query routing)
-- **Knowledge Coverage**: 3,000+ medical topics
-- **Accuracy**: Maintained through medical encyclopedia sources
+Individual base-learner validation results (from the training notebook):
 
-## ⚠️ **MEDICAL SAFETY**
+| Model | Accuracy | Role |
+|-------|----------|------|
+| Naive Bayes | ~100% | Base learner |
+| SVM Linear | ~99.6% | Base learner |
+| SVM RBF | ~99.6% | Base learner |
+| Random Forest | ~99.2% | Base learner |
+| XGBoost | ~96.7% | Base learner |
 
-### **Built-in Safety Features**
-- **Automatic Disclaimers**: All responses include medical safety warnings
-- **Emergency Guidance**: Directs users to seek professional care
-- **Confidence Thresholds**: Low-confidence predictions trigger caution messages
-- **Professional Referral**: Consistently recommends healthcare consultation
-- **No Diagnosis Claims**: System provides "educational information only"
+### RAG System Performance
+- **Retrieval**: FAISS `IndexFlatIP` (cosine), top-3 (symptom) / top-5 (general)
+- **Embeddings**: `all-MiniLM-L6-v2` (384-dim)
+- **Knowledge Base**: ~44,387 chunks from the Gale Encyclopedia of Medicine (3rd Edition)
+- **Response Generation**: fine-tuned LLaMA 3.1 8B (4-bit NF4), grounded in retrieved context
 
-### **Ethical AI Principles**
-- **Transparency**: Model confidence and source citations provided
-- **Fallback Mechanisms**: Graceful degradation when systems unavailable
-- **Privacy Focus**: No personal medical data storage
-- **Professional Boundaries**: Clear limitations and professional referrals
+## ⚠️ Medical Safety
 
-## 🎨 **USER INTERFACE**
+### Built-in Safety Features
+- **Emergency Red-Flag Detection**: chest pain, stroke signs (F.A.S.T.), breathing difficulty, severe bleeding, sudden vision loss, suicidal ideation — surfaced before any other content
+- **Automatic Disclaimers**: all responses include medical safety warnings
+- **Confidence Thresholds**: low-confidence predictions trigger caution messages
+- **Professional Referral**: consistently recommends healthcare consultation
+- **No Diagnosis Claims**: the system provides "educational information only"
 
-### **Modern React Components**
-- **Dark/Light Theme**: Automatic system theme detection
-- **Responsive Design**: Works on desktop, tablet, and mobile
-- **Real-time Chat**: WebSocket-like experience with typing indicators
-- **Accessibility**: Screen reader support and keyboard navigation
-- **Health Tips**: Rotating educational health information
+### Ethical AI Principles
+- **Transparency**: model confidence, model used, and source citations provided
+- **Fallback Mechanisms**: graceful degradation when systems unavailable
+- **Privacy Focus**: no personal medical data storage
+- **Professional Boundaries**: clear limitations and professional referrals
 
-### **Visual Feedback**
-- **Loading States**: Smooth loading animations during processing
-- **Confidence Indicators**: Visual confidence level displays
-- **Source Highlighting**: Clickable source references
-- **Error Handling**: User-friendly error messages and recovery
+## 🎨 User Interface
 
-## 🔧 **DEVELOPMENT**
+- **Dark/Light Theme**: manual toggle
+- **Responsive Design**: desktop, tablet, mobile
+- **Real-time Chat**: typing indicators, markdown rendering with XSS-safe formatting
+- **Conversation History**: sidebar with search, pin, delete (owner-scoped)
+- **Auth**: email/password registration & login (bcrypt, rate-limited)
+- **Image Attachments**: medical image analysis with server-side file validation
+- **Health Tips**: rotating educational carousel
+- **Server Status**: live backend health indicator
 
-### **Project Structure**
+## 🔧 Development
+
+### Project Structure (this repo)
 ```
-Hybrid chatbot/
-├── app/                    # Next.js 13 app directory
-│   ├── api/chat/          # Chat API endpoint
-│   ├── globals.css        # Global styles
-│   └── page.tsx           # Main chat interface
-├── components/            # React components
-│   ├── chat/             # Chat-specific components
-│   ├── ui/               # Reusable UI components
-│   └── HealthTip.tsx     # Health tips component
-├── lib/                  # Utility libraries
-│   ├── chatService.ts    # Main chat logic
-│   └── pythonServerClient.ts # Backend API client
-├── hybrid_server.py      # FastAPI hybrid backend
-├── backend_requirements.txt # Python dependencies
-└── start_hybrid_server.*  # Setup scripts
-```
-
-### **Environment Variables**
-```bash
-# Required for backend query classification & vision analysis
-GROQ_API_KEY=your_groq_api_key
-
-# Optional customization
-NEXT_PUBLIC_BACKEND_URL=http://127.0.0.1:8000
-```
-
-## 🚀 **DEPLOYMENT**
-
-### **Production Setup**
-1. **Build frontend**: `npm run build`
-2. **Set production environment variables**
-3. **Deploy Python backend** to cloud service (AWS, GCP, Heroku)
-4. **Deploy Next.js frontend** to Vercel, Netlify, or similar
-5. **Configure CORS** and security headers
-6. **Set up monitoring** and logging
-
-### **Docker Deployment** (Coming Soon)
-- Containerized backend and frontend
-- Docker Compose for easy deployment
-- Production-ready configuration
-
-## 📈 **MONITORING & ANALYTICS**
-
-The system includes built-in monitoring:
-- **Request Metrics**: Response times, success rates
-- **Model Performance**: Prediction accuracy, confidence distributions  
-- **User Interactions**: Query types, session lengths
-- **System Health**: Server status, model availability
-- **Error Tracking**: Automatic error logging and alerts
-
-## 🤝 **CONTRIBUTING**
-
-This is a complete implementation combining your trained ML models with advanced RAG capabilities. The system is ready for:
-- **Medical Research**: Academic studies on AI-assisted diagnosis
-- **Healthcare Applications**: Integration with medical systems
-- **Educational Use**: Training medical professionals
-- **Extension Development**: Adding new models or knowledge sources
-
-## 📄 **LICENSE & DISCLAIMER**
-
-**Educational and Research Use Only**
-
-This system is designed for educational and research purposes. It should not be used as a substitute for professional medical advice, diagnosis, or treatment. Always consult qualified healthcare professionals for medical concerns.
-
----
-
-**🎉 Your hybrid medical chatbot is now complete with both ML prediction models and RAG knowledge system working together seamlessly!**
-
-3. **Start development server**:
-   ```bash
-   npm run dev
-   ```
-   Or run the batch file:
-   ```bash
-   start.bat
-   ```
-
-4. **Open in browser**:
-   Visit [http://localhost:3000](http://localhost:3000)
-
-## 🏗️ Project Structure
-
-```
-├── app/
+Complete-Hybrid-chatbot/
+├── app/                              # Next.js 16 App Router
 │   ├── api/
-│   │   ├── chat/route.ts           # Main chat API endpoint
-│   │   └── model-info/route.ts     # Model information API
-│   ├── layout.tsx                  # App layout and metadata
-│   └── page.tsx                    # Main chat interface
+│   │   ├── chat/route.ts             # → backend /chat
+│   │   ├── attachments/route.ts      # file proxy → backend /chat-with-attachments
+│   │   ├── auth/{login,register}/    # bcrypt auth + rate limiting
+│   │   ├── conversations/[id]/        # conversation CRUD (owner-scoped)
+│   │   ├── health/, model-info/
+│   ├── globals.css, layout.tsx, page.tsx
 ├── components/
-│   ├── chat/
-│   │   ├── ChatInput.tsx           # Message input component
-│   │   ├── ChatMessage.tsx         # Message display component
-│   │   └── TypingIndicator.tsx     # Typing animation
-│   ├── ui/                         # Reusable UI components (shadcn/ui)
-│   ├── HealthTip.tsx              # Health tips carousel
-│   └── MedicalInfoPanel.tsx       # AI model information panel
+│   ├── chat/                         # ChatInput, ChatMessage, ResponseDisplay, TypingIndicator
+│   ├── auth/LoginModal.tsx
+│   ├── ui/                           # shadcn/ui (Radix)
+│   ├── ChatSidebar.tsx               # conversation history
+│   ├── MedicalInfoPanel.tsx          # AI system info (settings panel)
+│   ├── MedicalAlert.tsx              # emergency/disclaimer alerts
+│   ├── HealthTip.tsx, ServerStatus.tsx
 ├── lib/
-│   ├── chatService.ts             # Chat service with API integration
-│   ├── symptomsClassifier.ts      # SVM-based symptom classification
-│   ├── ragService.ts              # RAG system for medical Q&A
-│   └── utils.ts                   # Utility functions
-├── models/
-│   ├── rag_models/                # RAG model files and config
-│   └── symptoms_models/           # SVM model files and metadata
-└── types/
-    └── chat.ts                    # TypeScript type definitions
+│   ├── chatService.ts               # query detection, red-flags, fallbacks, formatting
+│   ├── pythonServerClient.ts         # HTTP client → Python backend
+│   ├── responseFormatter.ts         # XSS-safe markdown renderer
+│   ├── auth.ts                       # Zustand auth store
+│   ├── mongodb.ts, rateLimiter.ts, utils.ts
+├── config/chatbot_settings.json      # red-flags, thresholds, response templates
+├── hooks/, types/
+└── trainning-notebooks/              # Python backend + model training (Kaggle)
+    ├── final-chatbot-server.ipynb        # the running FastAPI backend
+    ├── machine_learning_Symtom_Classification.ipynb
+    ├── Deep_Learning_Symptom_Classification.ipynb
+    ├── knowledge-base-creation.ipynb
+    └── llm-finetuning.ipynb
 ```
 
-## 🤖 AI Models
+### Environment Variables
+```bash
+# Frontend → backend URL (printed by the notebook's startup cell)
+NEXT_PUBLIC_BACKEND_URL=https://your-tunnel-url.trycloudflare.com
 
-### Symptoms Classification Model
-- **Type**: Support Vector Machine (SVM) with linear kernel
-- **Accuracy**: 97.08% on test dataset
-- **Features**: 5,000 TF-IDF features
-- **Classes**: 24 medical conditions
-- **Training Data**: 792 samples, 180 validation, 240 test
+# MongoDB (users + conversations)
+MONGODB_URI=your_mongodb_connection_string
 
-**Supported Conditions**:
-- Acne, Arthritis, Bronchial Asthma, Cervical spondylosis
-- Chicken pox, Common Cold, Dengue, Diabetes
-- Fungal infection, Hypertension, Jaundice, Malaria
-- Migraine, Pneumonia, Psoriasis, Typhoid
-- And 8 more conditions...
-
-### RAG System
-- **Embedding Model**: sentence-transformers/all-MiniLM-L6-v2 (384-dim)
-- **LLM Model**: Fine-tuned Meta-Llama-3.1-8B-Instruct (4-bit, trained on Gale Encyclopedia Q&A)
-- **Query Classification & Vision**: Groq-hosted Qwen (qwen3.8-27b)
-- **Vector Store**: FAISS IndexFlatIP (cosine similarity)
-- **Chunk Size**: 500 characters with 50 overlap
-- **Knowledge Base**: 44,387 chunks from the Gale Encyclopedia of Medicine (3rd Edition)
-- **Retrieval**: Top-3 relevant chunks
-
-**Knowledge Base Topics**:
-- General Health, Chronic Conditions, Medications
-- Emergency Care, Preventive Care, Treatment Guidelines
-- Symptoms & Diagnosis, Medical Procedures
-
-## 🔧 API Endpoints
-
-### POST /api/chat
-Main chat endpoint that routes queries to appropriate AI system.
-
-**Request Body**:
-```json
-{
-  "message": "I have a headache and fever",
-  "queryType": "symptoms" // optional, auto-detected
-}
+# Session secret
+SESSION_SECRET=your_random_secret_key
 ```
+The backend additionally needs `GROQ_API_KEY` (set in the Kaggle environment/secrets, not in this repo).
 
-**Response**:
-```json
-{
-  "response": "Based on the symptoms you've described...",
-  "queryType": "symptoms",
-  "confidence": 0.85,
-  "predictedCondition": "Migraine",
-  "timestamp": "2025-08-05T..."
-}
-```
+## 🚀 Deployment
 
-### GET /api/model-info
-Returns information about the AI models.
+1. **Build frontend**: `npm run build`
+2. **Set production environment variables** (`NEXT_PUBLIC_BACKEND_URL`, `MONGODB_URI`, `SESSION_SECRET`)
+3. **Backend**: run `trainning-notebooks/final-chatbot-server.ipynb` in a GPU environment and expose it (Cloudflare tunnel / ngrok / hosted)
+4. **Frontend**: deploy the Next.js app (Vercel, Netlify, or self-hosted `npm run start`)
+5. **Configure CORS** and security headers
 
-**Response**:
-```json
-{
-  "symptomsModel": {
-    "modelType": "svm",
-    "numClasses": 24,
-    "accuracy": 0.97,
-    "conditions": [...]
-  },
-  "ragModel": {
-    "chunkSize": 1000,
-    "topK": 3,
-    "totalChunks": 50
-  }
-}
-```
+## 📈 Monitoring & Analytics
+- **Request Metrics**: response times, success rates
+- **Model Performance**: prediction confidence distributions, cascade trigger rate
+- **System Health**: server status, per-model availability (`/health`)
+- **Error Tracking**: automatic error logging
 
-## 💡 Usage Examples
-
-### Symptom Analysis
-```
-User: "I have a persistent cough and difficulty breathing"
-Bot: Based on the symptoms you've described, I believe you might be 
-     experiencing Bronchial Asthma (confidence: 78.5%).
-     
-     ⚠️ Important Medical Disclaimer:
-     This is an AI-generated assessment and should NOT replace 
-     professional medical advice...
-```
-
-### General Medical Query
-```
-User: "How can I manage high blood pressure?"
-Bot: Based on medical knowledge:
-     
-     • Hypertension (high blood pressure) is a condition where 
-       blood pressure is consistently elevated...
-     • Management includes lifestyle changes (diet, exercise, 
-       weight loss) and medications if necessary...
-```
-
-## ⚠️ Medical Disclaimer
-
-This chatbot provides educational information only and should never replace professional medical advice, diagnosis, or treatment. Always consult with qualified healthcare professionals for medical concerns. In case of emergency, contact emergency services immediately.
+## 🤝 Contributing
+This is a thesis project. The system is ready for medical-research, educational, and extension use (adding models or knowledge sources). For suggestions, refer to the project documentation or contact the development team.
 
 ## 🛠️ Technologies Used
-
-- **Frontend**: Next.js 13, React 18, TypeScript
-- **UI**: Tailwind CSS, Radix UI, shadcn/ui
-- **AI/ML**: Custom SVM implementation, RAG system
+- **Frontend**: Next.js 16 (App Router), React 18, TypeScript
+- **UI**: Tailwind CSS, Radix UI, shadcn/ui, Zustand, sonner
+- **Backend**: FastAPI, Pydantic, Groq (Qwen), PyTorch (PubMedBERT + fine-tuned LLaMA 3.1 8B 4-bit), scikit-learn (stacking ensemble), FAISS, sentence-transformers
+- **Database**: MongoDB (users + conversations), bcrypt auth
 - **Icons**: Lucide React
 - **Development**: ESLint, PostCSS
 
-## 📝 Development Notes
+## 📄 License & Disclaimer
 
-### Query Type Detection
-The system automatically detects whether a user query is:
-- **Symptom-based**: Uses SVM classifier
-- **General medical**: Uses RAG system
+**Educational and Research Use Only**
 
-Detection uses keyword matching and pattern recognition for terms like "pain", "fever", "I feel", etc.
-
-### Model Loading
-- Models are loaded as singleton instances for performance
-- Fallback responses handle API failures gracefully
-- Real-time confidence scoring provides transparency
-
-### Future Enhancements
-- Integration with real ML model files (pickle loading)
-- Voice input/output capabilities
-- Multi-language support
-- Integration with medical databases
-- Telehealth appointment scheduling
-
-## 📊 Performance Metrics
-
-- **Symptom Classification**: 97.08% accuracy
-- **Response Time**: < 2 seconds average
-- **Supported Conditions**: 24 medical conditions
-- **Knowledge Base**: 50+ medical topics
-
-## 🤝 Contributing
-
-This is a thesis project. For suggestions or improvements, please refer to the project documentation or contact the development team.
-
-## 📄 License
-
-This project is created for academic purposes as part of a thesis on medical chatbot systems.
+This system is designed for educational and research purposes. It should not be used as a substitute for professional medical advice, diagnosis, or treatment. Always consult qualified healthcare professionals for medical concerns. In case of emergency, contact emergency services immediately.
