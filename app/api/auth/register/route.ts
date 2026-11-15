@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/mongodb';
 import bcrypt from 'bcryptjs';
+import { rateLimit, getClientIp, validateEmail, validatePassword, MIN_PASSWORD_LENGTH } from '@/lib/rateLimiter';
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request);
+  const limit = rateLimit(ip, { maxRequests: 10, windowMs: 60 * 1000 });
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: 'Too many registration attempts. Please try again later.' },
+      { status: 429 }
+    );
+  }
+
   try {
     const { email, password, name } = await request.json();
 
@@ -10,23 +20,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'All fields required' }, { status: 400 });
     }
 
-    if (password.length < 6) {
-      return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 });
+    if (!validateEmail(email)) {
+      return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
+    }
+
+    const passwordCheck = validatePassword(password);
+    if (!passwordCheck.valid) {
+      return NextResponse.json({ error: passwordCheck.reason }, { status: 400 });
+    }
+
+    if (!name.trim() || name.trim().length < 2) {
+      return NextResponse.json({ error: 'Please enter a valid name' }, { status: 400 });
     }
 
     const db = await getDatabase();
-    
-    // Check if user already exists
+
     const existingUser = await db.collection('users').findOne({ email: email.toLowerCase() });
-    
+
     if (existingUser) {
       return NextResponse.json({ error: 'Email already exists' }, { status: 409 });
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Create user
     const result = await db.collection('users').insertOne({
       email: email.toLowerCase(),
       password: hashedPassword,

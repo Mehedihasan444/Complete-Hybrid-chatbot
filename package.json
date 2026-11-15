@@ -7,13 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "setup-python": "start_hybrid_server.bat",
-    "hybrid-server": "python hybrid_server.py",
-    "health-check": "curl http://localhost:3000/api/health",
-    "python-health": "curl http://127.0.0.1:8000/health",
-    "test-chat": "node test-medical-chatbot.js",
-    "start-all": "concurrently \"npm run setup-python\" \"npm run dev\"",
-    "setup-hybrid": "bash start_hybrid_server.sh"
+    "health-check": "curl http://localhost:3000/api/health"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

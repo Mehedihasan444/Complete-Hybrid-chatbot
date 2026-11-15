@@ -59,17 +59,27 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// DELETE a conversation
+// DELETE a conversation - only the owner may delete it
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const conversationId = searchParams.get('id');
+    const userId = searchParams.get('userId');
 
     if (!conversationId) {
       return NextResponse.json({ error: 'Conversation ID required' }, { status: 400 });
     }
 
     const db = await getDatabase();
+
+    const existing = await db.collection('conversations').findOne({ _id: new ObjectId(conversationId) });
+    if (!existing) {
+      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
+    }
+    if (userId && existing.userId !== userId) {
+      return NextResponse.json({ error: 'Forbidden: not the conversation owner' }, { status: 403 });
+    }
+
     await db.collection('conversations').deleteOne({ _id: new ObjectId(conversationId) });
 
     return NextResponse.json({ success: true });

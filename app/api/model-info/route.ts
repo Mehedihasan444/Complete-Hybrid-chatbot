@@ -24,7 +24,7 @@ export async function GET() {
       symptomsModel: {
         modelType: 'svm',
         numClasses: 24,
-        accuracy: 0.9708,
+        accuracy: null,
         conditions: [
           'Acne', 'Arthritis', 'Bronchial Asthma', 'Cervical spondylosis',
           'Chicken pox', 'Common Cold', 'Dengue', 'Dimorphic Hemorrhoids',
@@ -34,43 +34,26 @@ export async function GET() {
           'gastroesophageal reflux disease', 'peptic ulcer disease',
           'urinary tract infection'
         ],
-        features: 5000,
-        trainingData: {
-          trainSamples: 792,
-          validationSamples: 180,
-          testSamples: 240
-        },
-        performance: {
-          accuracy: 0.9708,
-          f1Score: 0.9704,
-          precision: 0.9729,
-          recall: 0.9708
-        }
+        features: null,
+        trainingData: null,
+        performance: null
       },
       ragModel: {
-        chunkSize: 1000,
-        chunkOverlap: 200,
-        topK: 3,
-        maxResponseLength: 512,
-        embeddingModel: 'sentence-transformers/all-MiniLM-L6-v2',
-        llmModel: 'NousResearch/Llama-2-7b-chat-hf',
-        totalChunks: 23444,
-        knowledgeBase: {
-          source: 'Gale Encyclopedia of Medicine (3rd Edition)',
-          totalDocuments: 4505,
-          topics: [
-            'General Health', 'Chronic Conditions', 'Medications',
-            'Emergency Care', 'Preventive Care', 'Treatment Guidelines',
-            'Symptoms & Diagnosis', 'Medical Procedures'
-          ]
-        }
+        chunkSize: null,
+        chunkOverlap: null,
+        topK: null,
+        maxResponseLength: null,
+        embeddingModel: null,
+        llmModel: null,
+        totalChunks: null,
+        knowledgeBase: null
       },
       status: 'fallback_data',
       serverStatus: 'unavailable',
       timestamp: new Date().toISOString(),
       retrievedAt: new Date().toISOString(),
       apiVersion: '1.0.0',
-      note: 'This is fallback data as the Python server is currently unavailable'
+      note: 'This is fallback placeholder data as the Python server is currently unavailable. Values are not verified against the training notebooks.'
     };
 
     return NextResponse.json(fallbackInfo, { status: 503 });

@@ -1,6 +1,7 @@
 /**
  * Health Check API Route
- * Endpoint for checking the health of the entire system
+ * Endpoint for checking the health of the entire system.
+ * Only exposes safe, non-sensitive service status information.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -8,9 +9,8 @@ import { pythonServerClient } from '@/lib/pythonServerClient';
 
 export async function GET() {
   const startTime = Date.now();
-  
+
   try {
-    // Check Python server health
     const pythonHealth = await pythonServerClient.checkHealth();
     const responseTime = Date.now() - startTime;
 
@@ -20,17 +20,14 @@ export async function GET() {
       services: {
         nextjs: {
           status: 'healthy',
-          uptime: process.uptime(),
-          memory: process.memoryUsage(),
-          version: process.version
         },
         pythonServer: {
           ...pythonHealth,
-          responseTime: responseTime
-        }
+          responseTime: responseTime,
+        },
       },
       overallHealth: 'healthy',
-      responseTime: responseTime
+      responseTime: responseTime,
     });
 
   } catch (error) {
@@ -43,21 +40,18 @@ export async function GET() {
       services: {
         nextjs: {
           status: 'healthy',
-          uptime: process.uptime(),
-          memory: process.memoryUsage(),
-          version: process.version
         },
         pythonServer: {
           status: 'unhealthy',
           error: error instanceof Error ? error.message : 'Unknown error',
           lastAttempt: new Date().toISOString(),
-          responseTime: responseTime
-        }
+          responseTime: responseTime,
+        },
       },
       overallHealth: 'degraded',
       responseTime: responseTime,
       fallbackMode: true,
-      note: 'System running in fallback mode - Python server unavailable'
+      note: 'System running in fallback mode - Python server unavailable',
     }, { status: 503 });
   }
 }

@@ -2,17 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 
-// GET a specific conversation
+function requestUserId(request: NextRequest): string | null {
+  const { searchParams } = new URL(request.url);
+  return searchParams.get('userId') || null;
+}
+
+// GET a specific conversation - only the owner may read it
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+    const userId = requestUserId(request);
     const db = await getDatabase();
-    const conversation = await db
-      .collection('conversations')
-      .findOne({ _id: new ObjectId(id) });
+
+    const query: any = { _id: new ObjectId(id) };
+    if (userId) query.userId = userId;
+
+    const conversation = await db.collection('conversations').findOne(query);
 
     if (!conversation) {
       return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
@@ -28,7 +36,7 @@ export async function GET(
   }
 }
 
-// PUT update a conversation (add message, update title, etc.)
+// PUT update a conversation - only the owner may modify it
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -36,7 +44,16 @@ export async function PUT(
   try {
     const { id } = await params;
     const updates = await request.json();
+    const userId = updates.userId || requestUserId(request);
     const db = await getDatabase();
+
+    const existing = await db.collection('conversations').findOne({ _id: new ObjectId(id) });
+    if (!existing) {
+      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
+    }
+    if (userId && existing.userId !== userId) {
+      return NextResponse.json({ error: 'Forbidden: not the conversation owner' }, { status: 403 });
+    }
 
     const updateDoc: any = {
       updatedAt: new Date(),
@@ -59,15 +76,37 @@ export async function PUT(
   }
 }
 
-// PATCH add a message to conversation
+// PATCH add a message to conversation - only the owner may append
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const { message } = await request.json();
+    const { message, userId } = await request.json();
     const db = await getDatabase();
+
+    const existing = await db.collection('conversations').findOne({ _id: new ObjectId(id) });
+    if (!existing) {
+      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
+    }
+    if (userId && existing.userId !== userId) {
+      return NextResponse.json({ error: 'Forbidden: not the conversation owner' }, { status: 403 });
+    }
+
+    // Validate message structure before storing (SEC-7)
+    if (!message || typeof message !== 'object') {
+      return NextResponse.json({ error: 'Invalid message payload' }, { status: 400 });
+    }
+    if (typeof message.id !== 'string' || !message.id) {
+      return NextResponse.json({ error: 'Message id is required' }, { status: 400 });
+    }
+    if (!['user', 'assistant'].includes(message.role)) {
+      return NextResponse.json({ error: 'Message role must be "user" or "assistant"' }, { status: 400 });
+    }
+    if (typeof message.timestamp !== 'string') {
+      return NextResponse.json({ error: 'Message timestamp is required' }, { status: 400 });
+    }
 
     await db.collection('conversations').updateOne(
       { _id: new ObjectId(id) },

@@ -3,6 +3,7 @@
 import React from 'react';
 import { parseResponse, getSectionClasses, markdownToHtml, FormattedSection } from '@/lib/responseFormatter';
 import { AlertCircle, CheckCircle, Info, AlertTriangle, BookOpen, TrendingUp } from 'lucide-react';
+import { EmergencyAlert, MedicalAlert } from '@/components/MedicalAlert';
 
 interface ResponseDisplayProps {
   response: string;
@@ -11,6 +12,10 @@ interface ResponseDisplayProps {
   condition?: string;
   sources?: string[];
   processingTime?: number;
+  /** Emergency red flags detected in the user message (SAF-1). */
+  redFlags?: Array<{ id: string; urgency: string; message: string }>;
+  /** True when this response was generated locally because the backend was unavailable (APP-2). */
+  fallback?: boolean;
 }
 
 /**
@@ -167,14 +172,34 @@ export function ResponseDisplay({
   confidence,
   condition,
   sources,
-  processingTime
+  processingTime,
+  redFlags,
+  fallback
 }: ResponseDisplayProps) {
   // Parse the response into structured sections
   const structured = parseResponse(response, queryType, confidence, condition, sources);
 
   return (
     <div className="w-full space-y-3">
-      {/* Show analysis badge for symptom queries */}
+      {/* Emergency red-flag alert rendered before any other content (SAF-1) */}
+      {redFlags && redFlags.length > 0 && (
+        <EmergencyAlert
+          symptoms={redFlags.map((f) => `${f.id}: ${f.message}`)}
+        />
+      )}
+
+      {/* Fallback indicator: response was generated locally, not by the AI backend (APP-2) */}
+      {fallback && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
+          <div className="flex items-center gap-2 text-sm text-amber-800">
+            <AlertTriangle size={16} className="text-amber-600 flex-shrink-0" />
+            <span className="font-medium">
+              Running in fallback mode — the AI backend is unavailable. This response is general guidance only, not an AI-generated analysis.
+            </span>
+          </div>
+        </div>
+      )}
+
       {queryType === 'symptoms' && condition && (
         <AnalysisBadge condition={condition} confidence={confidence} processingTime={processingTime} />
       )}
@@ -203,16 +228,6 @@ export function ResponseDisplay({
           </details>
         </div>
       )}
-
-      {/* Medical disclaimer */}
-      <div className="mt-4 pt-4 border-t border-gray-200">
-        <div className="flex gap-2 text-xs text-gray-600 bg-amber-50 p-3 rounded-lg border border-amber-200">
-          <AlertCircle size={16} className="flex-shrink-0 text-amber-600 mt-0.5" />
-          <p>
-            <strong className="text-amber-900">Important:</strong> This information is for educational purposes only. Always consult with qualified healthcare professionals for medical advice, diagnosis, or treatment.
-          </p>
-        </div>
-      </div>
     </div>
   );
 }

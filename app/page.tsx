@@ -20,7 +20,6 @@ import { toast } from 'sonner';
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [showMedicalInfo, setShowMedicalInfo] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -203,11 +202,6 @@ export default function ChatPage() {
     setMessages(prev => [...prev, userMessage]);
     setIsTyping(true);
 
-    // Play send sound
-    if (soundEnabled) {
-      // In a real app, you'd play an actual sound file
-      console.log('🔊 Message sent sound');
-    }
     try {
       let botResponse;
       
@@ -234,10 +228,6 @@ export default function ChatPage() {
 
       setMessages(prev => [...prev, botMessage]);
       
-      // Play receive sound
-      if (soundEnabled) {
-        console.log('🔊 Message received sound');
-      }
     } catch (error) {
       console.error('Error generating bot response:', error);
       const errorMessage: Message = {

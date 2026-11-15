@@ -268,6 +268,8 @@ export function ChatMessage({ message, onDelete }: ChatMessageProps) {
               condition={(message.content as any).predictedCondition}
               sources={(message.content as any).sources}
               processingTime={(message.content as any).processingTime}
+              redFlags={(message.content as any).redFlags}
+              fallback={(message.content as any).fallback}
             />
           ) : (
             formatContent(messageContent)

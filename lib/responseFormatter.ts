@@ -215,24 +215,75 @@ export function getSectionClasses(type: FormattedSection['type']): {
   return styles[type] || styles.paragraph;
 }
 
+const ALLOWED_URL_PROTOCOLS = new Set(['http:', 'https:']);
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 /**
- * Format response with markdown support
+ * Clean up PDF-extraction artifacts from RAG/LLM text:
+ * - join hyphenated line breaks ("retino-\npathy" -> "retinopathy")
+ * - collapse stray whitespace/newlines
+ */
+function cleanText(text: string): string {
+  return text
+    // join hyphenated words split across lines
+    .replace(/-\s*\n\s*/g, '')
+    // collapse multiple spaces/tabs
+    .replace(/[ \t]{2,}/g, ' ')
+    // normalize internal newlines to single spaces within paragraphs
+    .replace(/\n+/g, ' ')
+    .trim();
+}
+
+function sanitizeUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (!ALLOWED_URL_PROTOCOLS.has(parsed.protocol)) {
+      return '#';
+    }
+    return parsed.toString();
+  } catch {
+    return '#';
+  }
+}
+
+/**
+ * Format response with markdown support.
+ * All user-controlled text is HTML-escaped before any safe formatting is
+ * re-injected, and only http/https links are allowed, preventing XSS via
+ * javascript:, data:, or vbscript: URLs.
  */
 export function markdownToHtml(text: string): string {
-  // Convert bold
+  // Clean PDF-extraction artifacts first
+  text = cleanText(text);
+
+  // Escape all HTML first to neutralise any markup controlled by the model/user
+  text = escapeHtml(text);
+
+  // Convert bold **text** and __text__
   text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   text = text.replace(/__(.*?)__/g, '<strong>$1</strong>');
-  
-  // Convert italic
-  text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+  // Convert italic *text* (avoid matching bold delimiters)
+  text = text.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
   text = text.replace(/_(.*?)_/g, '<em>$1</em>');
-  
+
   // Convert inline code
   text = text.replace(/`(.+?)`/g, '<code class="bg-gray-200 px-2 py-1 rounded text-gray-800 font-mono text-sm">$1</code>');
-  
-  // Convert links
-  text = text.replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">$1</a>');
-  
+
+  // Convert links with protocol validation
+  text = text.replace(/\[(.+?)\]\((.+?)\)/g, (_match, label, url) => {
+    const safeUrl = escapeHtml(sanitizeUrl(url));
+    return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">${escapeHtml(label)}</a>`;
+  });
+
   return text;
 }
 
