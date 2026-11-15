@@ -12,8 +12,9 @@ A sophisticated AI-powered medical chatbot that intelligently combines **trained
 - **Smart Model Selection**: Automatically selects best models based on query complexity
 
 ### **2. Medical Knowledge RAG System**
-- **gemini-2.5-flash Integration**: Uses Google's advanced LLM for intelligent responses
-- **ChromaDB Vector Store**: Efficient semantic search through medical encyclopedia
+- **Groq LLM Routing**: Groq-hosted Qwen classifies queries and analyzes medical images
+- **Fine-Tuned LLaMA 3.1 8B**: Self-trained on the Gale Encyclopedia for medical reasoning
+- **FAISS Vector Store**: Semantic search over the medical encyclopedia (all-MiniLM-L6-v2)
 - **Medical Encyclopedia**: "The Gale Encyclopedia of Medicine (3rd Edition)" knowledge base
 - **Source Citations**: Automatic referencing of relevant medical sources
 - **Context-Aware**: Maintains conversation context for follow-up questions
@@ -49,13 +50,13 @@ A sophisticated AI-powered medical chatbot that intelligently combines **trained
    npm run setup-hybrid
    ```
 
-3. **Set Gemini API Key** (optional, for full RAG functionality):
+3. **Set Groq API Key** (required for backend query classification & image analysis):
    ```bash
    # Windows
-   set GEMINI_API_KEY=your_api_key_here
+   set GROQ_API_KEY=your_api_key_here
    
    # Linux/Mac
-   export GEMINI_API_KEY=your_api_key_here
+   export GROQ_API_KEY=your_api_key_here
    ```
 
 4. **Start both servers**:
@@ -102,10 +103,10 @@ If you prefer to run servers separately:
 │  └─────────────────────────────────────────────────────────┘ │
 │  ┌─────────────────┐              ┌─────────────────────────┐ │
 │  │    Disease      │              │      RAG System        │ │
-│  │   Prediction    │              │   (Gemini + Vector)    │ │
+│  │   Prediction    │              │   (LLaMA  + Vector)    │ │
 │  │    Models       │              │                       │ │
 │  │ ┌─────────────┐ │              │ ┌─────────────────────┐ │ │
-│  │ │ Naive Bayes │ │              │ │   ChromaDB Vector   │ │ │
+│  │ │ Naive Bayes │ │              │ │   FAISS Vector      │ │ │
 │  │ │     SVM     │ │              │ │      Store         │ │ │
 │  │ │ Random Forest│ │              │ │                    │ │ │
 │  │ │   XGBoost   │ │              │ │ Medical Encyclopedia│ │ │
@@ -190,7 +191,7 @@ The system automatically detects query types:
 
 ### **RAG System Performance**
 - **Retrieval Speed**: < 200ms average
-- **Response Generation**: < 2 seconds with Gemini API
+- **Response Generation**: < 2 seconds via fine-tuned LLaMA 3.1 (Groq handles query routing)
 - **Knowledge Coverage**: 3,000+ medical topics
 - **Accuracy**: Maintained through medical encyclopedia sources
 
@@ -247,11 +248,11 @@ Hybrid chatbot/
 
 ### **Environment Variables**
 ```bash
-# Required for full RAG functionality
-GEMINI_API_KEY=your_gemini_api_key
+# Required for backend query classification & vision analysis
+GROQ_API_KEY=your_groq_api_key
 
 # Optional customization
-NEXT_PUBLIC_PYTHON_SERVER_URL=http://127.0.0.1:8000
+NEXT_PUBLIC_BACKEND_URL=http://127.0.0.1:8000
 ```
 
 ## 🚀 **DEPLOYMENT**
@@ -354,9 +355,12 @@ This system is designed for educational and research purposes. It should not be 
 - And 8 more conditions...
 
 ### RAG System
-- **Embedding Model**: sentence-transformers/all-MiniLM-L6-v2
-- **LLM Model**: NousResearch/Llama-2-7b-chat-hf
-- **Chunk Size**: 1000 tokens with 200 overlap
+- **Embedding Model**: sentence-transformers/all-MiniLM-L6-v2 (384-dim)
+- **LLM Model**: Fine-tuned Meta-Llama-3.1-8B-Instruct (4-bit, trained on Gale Encyclopedia Q&A)
+- **Query Classification & Vision**: Groq-hosted Qwen (qwen3.8-27b)
+- **Vector Store**: FAISS IndexFlatIP (cosine similarity)
+- **Chunk Size**: 500 characters with 50 overlap
+- **Knowledge Base**: 44,387 chunks from the Gale Encyclopedia of Medicine (3rd Edition)
 - **Retrieval**: Top-3 relevant chunks
 
 **Knowledge Base Topics**:

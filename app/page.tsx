@@ -76,6 +76,7 @@ export default function ChatPage() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
+          userId,
           messages: messages.map(msg => ({
             id: msg.id,
             role: msg.sender === 'user' ? 'user' : 'assistant',
@@ -143,7 +144,7 @@ export default function ChatPage() {
         await saveConversationToDb();
       }
 
-      const response = await fetch(`/api/conversations/${conversationId}`);
+      const response = await fetch(`/api/conversations/${conversationId}?userId=${userId}`);
       const conversation = await response.json();
 
       setCurrentConversationId(conversationId);

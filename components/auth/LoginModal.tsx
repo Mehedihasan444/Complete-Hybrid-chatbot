@@ -130,12 +130,12 @@ export function LoginModal({ isOpen, onClose, onSuccess }: LoginModalProps) {
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
                 placeholder="••••••••"
                 required
-                minLength={6}
+                minLength={10}
               />
             </div>
             {!isLogin && (
               <p className="text-xs text-gray-500 mt-1">
-                Password must be at least 6 characters
+                Password must be at least 10 characters
               </p>
             )}
           </div>

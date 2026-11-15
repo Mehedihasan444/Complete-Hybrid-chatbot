@@ -83,13 +83,13 @@ export function MedicalInfoPanel({ isOpen, onClose }: MedicalInfoPanelProps) {
                 <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
                   <h4 className="font-semibold text-purple-700 dark:text-purple-300 mb-2">🧠 Query Classification</h4>
                   <p className="text-sm text-purple-600 dark:text-purple-400">
-                    LLAMA 3.1 classifies queries and detects emergencies
+                    Groq-hosted Qwen classifies queries and flags emergencies
                   </p>
                 </div>
                 <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                   <h4 className="font-semibold text-blue-700 dark:text-blue-300 mb-2">⚡ ML/DL Cascade</h4>
                   <p className="text-sm text-blue-600 dark:text-blue-400">
-                    Fast ML Ensemble with BioBERT DL fallback for accuracy
+                    Fast ML Ensemble with PubMedBERT DL fallback for accuracy
                   </p>
                 </div>
                 <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
@@ -123,7 +123,7 @@ export function MedicalInfoPanel({ isOpen, onClose }: MedicalInfoPanelProps) {
                     ML Ensemble + DL Cascade
                   </CardTitle>
                   <CardDescription>
-                    Fast ML prediction with BioBERT deep learning cascade when confidence {"<"} 75%
+                    Fast ML prediction with PubMedBERT deep learning cascade when confidence {"<"} 75%
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -169,7 +169,7 @@ export function MedicalInfoPanel({ isOpen, onClose }: MedicalInfoPanelProps) {
                   </div>
                   
                   <div>
-                    <h5 className="font-semibold mb-2">Cascade: BioBERT DL (Accurate)</h5>
+                    <h5 className="font-semibold mb-2">Cascade: PubMedBERT DL (Accurate)</h5>
                     <div className="flex flex-wrap gap-2 mb-3">
                       <Badge variant="secondary" className="text-xs">
                         PubMedBERT Fine-tuned
@@ -178,7 +178,7 @@ export function MedicalInfoPanel({ isOpen, onClose }: MedicalInfoPanelProps) {
                         Transformer Architecture
                       </Badge>
                       <Badge variant="secondary" className="text-xs">
-                        Medical NER Optimized
+                        Trained on PubMed
                       </Badge>
                       <Badge variant="secondary" className="text-xs">
                         Activated when ML {"<"} 75%
@@ -244,15 +244,15 @@ export function MedicalInfoPanel({ isOpen, onClose }: MedicalInfoPanelProps) {
                   </div>
                   
                   <div>
-                    <h5 className="font-semibold mb-2">LLAMA 3.1 Dual Role:</h5>
+                    <h5 className="font-semibold mb-2">Routing & Generation:</h5>
                     <div className="grid grid-cols-2 gap-3 mb-3">
                       <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded border border-purple-200 dark:border-purple-800">
-                        <div className="text-xs font-semibold text-purple-700 dark:text-purple-300">Query Classification</div>
-                        <div className="text-sm text-purple-600 dark:text-purple-400">Sanitizes & routes queries</div>
+                        <div className="text-xs font-semibold text-purple-700 dark:text-purple-300">Groq / Qwen (Routing)</div>
+                        <div className="text-sm text-purple-600 dark:text-purple-400">Classifies queries & analyzes images</div>
                       </div>
                       <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
-                        <div className="text-xs font-semibold text-blue-700 dark:text-blue-300">Explanation Generation</div>
-                        <div className="text-sm text-blue-600 dark:text-blue-400">Patient-friendly responses</div>
+                        <div className="text-xs font-semibold text-blue-700 dark:text-blue-300">LLAMA 3.1 (Generation)</div>
+                        <div className="text-sm text-blue-600 dark:text-blue-400">Patient-friendly explanations</div>
                       </div>
                     </div>
                   </div>

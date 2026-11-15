@@ -69,6 +69,9 @@ export async function DELETE(request: NextRequest) {
     if (!conversationId) {
       return NextResponse.json({ error: 'Conversation ID required' }, { status: 400 });
     }
+    if (!userId) {
+      return NextResponse.json({ error: 'userId is required' }, { status: 400 });
+    }
 
     const db = await getDatabase();
 
@@ -76,7 +79,7 @@ export async function DELETE(request: NextRequest) {
     if (!existing) {
       return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
     }
-    if (userId && existing.userId !== userId) {
+    if (existing.userId !== userId) {
       return NextResponse.json({ error: 'Forbidden: not the conversation owner' }, { status: 403 });
     }
 

@@ -65,7 +65,11 @@ export function ChatSidebar({
               onClick={async () => {
                 toast.dismiss(t);
                 try {
-                  await fetch(`/api/conversations?id=${id}`, { method: 'DELETE' });
+                  const res = await fetch(`/api/conversations?id=${id}&userId=${userId}`, { method: 'DELETE' });
+                  if (!res.ok) {
+                    toast.error('Failed to delete conversation');
+                    return;
+                  }
                   setConversations(prev => prev.filter(conv => conv._id !== id));
                   if (currentConversationId === id) {
                     onNewChat();
@@ -97,11 +101,16 @@ export function ChatSidebar({
     e.stopPropagation();
     
     try {
-      await fetch(`/api/conversations/${id}`, {
+      const response = await fetch(`/api/conversations/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isPinned: !isPinned }),
+        body: JSON.stringify({ isPinned: !isPinned, userId }),
       });
+
+      if (!response.ok) {
+        toast.error('Failed to update pin status');
+        return;
+      }
       
       setConversations(prev =>
         prev.map(conv =>

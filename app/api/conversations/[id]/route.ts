@@ -15,10 +15,12 @@ export async function GET(
   try {
     const { id } = await params;
     const userId = requestUserId(request);
+    if (!userId) {
+      return NextResponse.json({ error: 'userId is required' }, { status: 400 });
+    }
     const db = await getDatabase();
 
-    const query: any = { _id: new ObjectId(id) };
-    if (userId) query.userId = userId;
+    const query: any = { _id: new ObjectId(id), userId };
 
     const conversation = await db.collection('conversations').findOne(query);
 
@@ -45,13 +47,16 @@ export async function PUT(
     const { id } = await params;
     const updates = await request.json();
     const userId = updates.userId || requestUserId(request);
+    if (!userId) {
+      return NextResponse.json({ error: 'userId is required' }, { status: 400 });
+    }
     const db = await getDatabase();
 
     const existing = await db.collection('conversations').findOne({ _id: new ObjectId(id) });
     if (!existing) {
       return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
     }
-    if (userId && existing.userId !== userId) {
+    if (existing.userId !== userId) {
       return NextResponse.json({ error: 'Forbidden: not the conversation owner' }, { status: 403 });
     }
 
@@ -84,13 +89,16 @@ export async function PATCH(
   try {
     const { id } = await params;
     const { message, userId } = await request.json();
+    if (!userId) {
+      return NextResponse.json({ error: 'userId is required' }, { status: 400 });
+    }
     const db = await getDatabase();
 
     const existing = await db.collection('conversations').findOne({ _id: new ObjectId(id) });
     if (!existing) {
       return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
     }
-    if (userId && existing.userId !== userId) {
+    if (existing.userId !== userId) {
       return NextResponse.json({ error: 'Forbidden: not the conversation owner' }, { status: 403 });
     }
 
