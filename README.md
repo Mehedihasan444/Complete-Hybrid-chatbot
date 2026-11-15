@@ -42,7 +42,7 @@ A sophisticated AI-powered medical chatbot that intelligently combines **trained
    ```
 
 2. **Run the Python backend** (GPU notebook):
-   Open `trainning-notebooks/final-chatbot-server.ipynb` in Kaggle (or another GPU Jupyter environment), add `GROQ_API_KEY` to the environment/secrets, and run all cells. The startup cell loads the model artifacts and prints a public **Cloudflare Quick Tunnel** URL (`https://*.trycloudflare.com`).
+   Open `chatbot-server.ipynb` in Kaggle (or another GPU Jupyter environment), add `GROQ_API_KEY` to the environment/secrets, and run all cells. The startup cell loads the model artifacts and prints a public **Cloudflare Quick Tunnel** URL (`https://*.trycloudflare.com`).
    > The four artifacts it loads — the ML stacking ensemble, fine-tuned PubMedBERT, fine-tuned LLaMA 3.1, and the FAISS RAG index — are produced by the other notebooks in `trainning-notebooks/` and attached as Kaggle datasets.
 
 3. **Point the frontend at the backend**:
